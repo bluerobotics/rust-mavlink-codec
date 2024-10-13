@@ -1,0 +1,47 @@
+name: Test and Build
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            TARGET: x86_64-unknown-linux-musl
+
+          - os: macos-latest
+            TARGET: x86_64-apple-darwin
+
+          - os: windows-latest
+            TARGET: x86_64-pc-windows-msvc
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Use cached dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: "${{ matrix.os }}-${{ matrix.TARGET }}-${{ hashFiles('**/Cargo.lock') }}"
+        shared-key: "shared"
+
+    - name: Install build dependencies - Rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile minimal --target ${{ matrix.TARGET }} -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Building lib for ${{ matrix.os }} ${{ matrix.target }}
+      run: cargo build --release --locked --target ${{matrix.target}} --verbose
+
+    - name: Building tests for ${{ matrix.os }} ${{ matrix.target }}
+      run: cargo test --no-run --locked --target ${{matrix.target}} --verbose
+
+    - name: Running tests for ${{ matrix.os }} ${{ matrix.target }}
+      run: cargo test --locked --target ${{matrix.target}} --verbose

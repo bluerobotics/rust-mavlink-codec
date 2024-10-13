@@ -1,0 +1,10 @@
+[package]
+name = "dev-utils"
+authors = ["João Antônio Cardoso <joao.maker@gmail.com>"]
+license = "MIT"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mavlink = { default-features = false, features = ["std", "ardupilotmega", "tokio-1"], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
+rand = "0.8"

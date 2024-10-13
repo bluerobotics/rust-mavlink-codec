@@ -1,0 +1,44 @@
+[package]
+name = "mavlink-codec"
+authors = ["João Antônio Cardoso <joao.maker@gmail.com>"]
+license = "MIT"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "mavlink_codec"
+path = "src/lib.rs"
+bench = false
+
+# [profile.release]
+# codegen-units = 1
+# lto = "fat"
+# panic = "abort"
+# opt-level = 3
+
+[dependencies]
+bytes = "1.7"
+log = "0.4"
+mavlink = { default-features = false, features = ["std", "ardupilotmega", "tokio-1"], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
+thiserror = "1.0"
+tokio-util = { version = "0.7", features = ["codec"] }
+
+[features]
+default = ["std"]
+std = []
+
+[dev-dependencies]
+anyhow = "1.0"
+criterion = { version =  "0.5", features = ["async_tokio"] }
+dev-utils = { path = "dev_utils" }
+futures = "0.3"
+mavlink = { default-features = false, features = ["std", "ardupilotmega", "tokio-1"], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
+rand = "0.8"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+tokio-util = "0.7"
+tracing = "0.1"
+
+[[bench]]
+name = "bench"
+harness = false
