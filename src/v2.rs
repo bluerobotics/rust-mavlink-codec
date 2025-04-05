@@ -374,4 +374,30 @@ mod test {
         assert_eq!(v2_packet.payload(), raw_v2_message.payload());
         assert_eq!(v2_packet.checksum(), raw_v2_message.checksum());
     }
+
+    #[test]
+    fn test_raw_v2_message_from_v2packet() {
+        use mavlink::{ardupilotmega::MavMessage, MAVLinkV2MessageRaw, MavHeader, Message};
+
+        let raw_v2_message_original = {
+            let header = MavHeader {
+                system_id: 1,
+                component_id: 1,
+                sequence: 0,
+            };
+
+            let message_data = MavMessage::default_message_from_id(0).unwrap(); // Heartbeat message
+            let mut raw_v2_message = MAVLinkV2MessageRaw::new();
+            raw_v2_message.serialize_message(header, &message_data);
+            raw_v2_message
+        };
+
+        let v2_packet = V2Packet::from(raw_v2_message_original);
+
+        assert_eq!(v2_packet.as_slice(), raw_v2_message_original.raw_bytes());
+
+        let raw_v2_message = MAVLinkV2MessageRaw::try_from(v2_packet).unwrap();
+
+        assert_eq!(raw_v2_message_original, raw_v2_message);
+    }
 }
