@@ -356,7 +356,7 @@ mod test {
 
         let v2_packet = V2Packet::from(raw_v2_message);
 
-        assert_eq!(v2_packet.header(), raw_v2_message.header()); // Todo: remote this clone once [this PR](https://github.com/mavlink/rust-mavlink/pull/288) get merged upstream
+        assert_eq!(v2_packet.header(), raw_v2_message.header());
         assert_eq!(*v2_packet.stx(), raw_v2_message.raw_bytes()[0]);
         assert_eq!(*v2_packet.payload_length(), raw_v2_message.payload_length());
         assert_eq!(
