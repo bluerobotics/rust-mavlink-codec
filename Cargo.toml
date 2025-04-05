@@ -42,3 +42,7 @@ tracing = "0.1"
 [[bench]]
 name = "bench"
 harness = false
+
+[[bench]]
+name = "compatibility_bench"
+harness = false
