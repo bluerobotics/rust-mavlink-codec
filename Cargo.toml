@@ -17,10 +17,10 @@ bench = false
 # opt-level = 3
 
 [dependencies]
-bytes = "1.7"
+bytes = "1.10"
 log = "0.4"
 mavlink = { default-features = false, features = ["std", "ardupilotmega", "tokio-1"], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
-thiserror = "1.0"
+thiserror = "2.0"
 tokio-util = { version = "0.7", features = ["codec"] }
 
 [features]
