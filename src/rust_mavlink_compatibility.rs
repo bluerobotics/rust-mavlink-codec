@@ -58,12 +58,23 @@ impl TryFrom<V1Packet> for mavlink::MAVLinkV1MessageRaw {
     type Error = mavlink::error::MessageReadError;
 
     /// A convenient rust-mavlink compatibility layer
-    /// warning: this has a bad performance because we don't have access to the mutable internal buffer of rust-mavlink's raw messages
     fn try_from(value: V1Packet) -> Result<Self, Self::Error> {
-        use mavlink::ardupilotmega::MavMessage;
+        let src_s = value.as_slice();
+        let src_s_ptr = src_s.as_ptr();
+        let src_s_len = src_s.len();
 
-        let mut reader = mavlink::peek_reader::PeekReader::new(value.as_slice());
-        mavlink::read_v1_raw_message::<MavMessage, _>(&mut reader)
+        let mut message = std::mem::MaybeUninit::<mavlink::MAVLinkV1MessageRaw>::uninit();
+        let dst_s_ptr = message.as_mut_ptr() as *mut u8;
+
+        unsafe {
+            let remaining_len = 280 - src_s_len;
+            if remaining_len > 0 {
+                std::ptr::write_bytes(dst_s_ptr.add(src_s_len), 0, remaining_len);
+            }
+
+            std::ptr::copy_nonoverlapping(src_s_ptr, dst_s_ptr, src_s_len);
+            Ok(message.assume_init())
+        }
     }
 }
 
@@ -79,11 +90,22 @@ impl TryFrom<V2Packet> for mavlink::MAVLinkV2MessageRaw {
     type Error = mavlink::error::MessageReadError;
 
     /// A convenient rust-mavlink compatibility layer
-    /// warning: this has a bad performance because we don't have access to the mutable internal buffer of rust-mavlink's raw messages
     fn try_from(value: V2Packet) -> Result<Self, Self::Error> {
-        use mavlink::ardupilotmega::MavMessage;
+        let src_s = value.as_slice();
+        let src_s_ptr = src_s.as_ptr();
+        let src_s_len = src_s.len();
 
-        let mut reader = mavlink::peek_reader::PeekReader::new(value.as_slice());
-        mavlink::read_v2_raw_message::<MavMessage, _>(&mut reader)
+        let mut message = std::mem::MaybeUninit::<mavlink::MAVLinkV2MessageRaw>::uninit();
+        let dst_s_ptr = message.as_mut_ptr() as *mut u8;
+
+        unsafe {
+            let remaining_len = 280 - src_s_len;
+            if remaining_len > 0 {
+                std::ptr::write_bytes(dst_s_ptr.add(src_s_len), 0, remaining_len);
+            }
+
+            std::ptr::copy_nonoverlapping(src_s_ptr, dst_s_ptr, src_s_len);
+            Ok(message.assume_init())
+        }
     }
 }
