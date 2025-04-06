@@ -67,7 +67,7 @@ impl TryFrom<V1Packet> for mavlink::MAVLinkV1MessageRaw {
         let dst_s_ptr = message.as_mut_ptr() as *mut u8;
 
         unsafe {
-            let remaining_len = 280 - src_s_len;
+            let remaining_len = 263 - src_s_len;
             if remaining_len > 0 {
                 std::ptr::write_bytes(dst_s_ptr.add(src_s_len), 0, remaining_len);
             }
