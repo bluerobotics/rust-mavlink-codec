@@ -489,7 +489,7 @@ mod test_decode {
     fn test_decode_v2() {
         let mut codec = MavlinkCodec::<false, true, false, false, false, false>::default();
 
-        let mut buf = BytesMut::with_capacity(V1Packet::MAX_PACKET_SIZE);
+        let mut buf = BytesMut::with_capacity(V2Packet::MAX_PACKET_SIZE);
 
         let expected_packet = {
             let header = MavHeader {
