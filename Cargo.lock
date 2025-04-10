@@ -460,6 +460,8 @@ dependencies = [
  "mavlink-core",
  "num-derive",
  "num-traits",
+ "serde",
+ "serde_arrays",
 ]
 
 [[package]]
@@ -505,6 +507,8 @@ dependencies = [
  "async-trait",
  "byteorder",
  "crc-any",
+ "serde",
+ "serde_arrays",
  "tokio",
 ]
 
@@ -797,6 +801,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde_arrays"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38636132857f68ec3d5f3eb121166d2af33cb55174c4d5ff645db6165cbef0fd"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

@@ -1,9 +1,10 @@
 use bytes::{BufMut, BytesMut};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-
-use crate::mav_types::{serde_utils::BitsField, *};
 use serde_derive::{Deserialize as DeriveDeserialize, Serialize as DeriveSerialize};
+
+use crate::mav_types::field_types::*;
+use crate::mav_types::serde_utils::BitsField;
 
 use super::HeartbeatMessage;
 

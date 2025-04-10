@@ -36,7 +36,7 @@ impl Default for HEARTBEAT_DATA {
 }
 
 impl MessageData for HEARTBEAT_DATA {
-    type Message = MavMessage;
+    type Message = mav_message;
     const ID: u32 = 0u32;
     const NAME: &'static str = "HEARTBEAT";
     const EXTRA_CRC: u8 = 50u8;
@@ -252,12 +252,12 @@ impl Default for MavState {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[repr(u32)]
-pub enum MavMessage {
+pub enum mav_message {
     HEARTBEAT(HEARTBEAT_DATA),
     // ... thousands of others
 }
 
-impl Message for MavMessage {
+impl Message for mav_message {
     fn parse(
         version: MavlinkVersion,
         id: u32,

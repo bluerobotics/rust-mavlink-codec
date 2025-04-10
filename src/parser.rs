@@ -1,15 +1,16 @@
 use crate::{
     error::DecoderError,
-    mav_types::{heartbeat::HeartbeatMessage, MavMessage},
+    mav_types::mav_message::{heartbeat::HeartbeatMessage, MavMessage},
     v2::V2Packet,
+    Packet,
 };
 
-fn parse(packet: &V2Packet) -> Result<MavMessage, DecoderError> {
+pub fn parse(packet: &Packet) -> Result<MavMessage, DecoderError> {
     let payload_start = V2Packet::STX_SIZE + V2Packet::HEADER_SIZE;
     let payload_end = payload_start + *packet.payload_length() as usize;
 
     // This increases the reference counter from the original packet.buffer, so it is guarantee to exist beyond packet's life
-    let payload = packet.buffer.slice(payload_start..payload_end);
+    let payload = packet.bytes().slice(payload_start..payload_end);
 
     let message_id = packet.message_id();
 
@@ -41,7 +42,7 @@ mod tests {
         };
 
         // 2. Convert it to V2Packet, this is our decoded mavlink packet:
-        let packet = V2Packet::from(raw_v2_message);
+        let packet = Packet::from(raw_v2_message);
         dbg!(&packet);
 
         // 3. From the decoded packet, parse the mavlink message

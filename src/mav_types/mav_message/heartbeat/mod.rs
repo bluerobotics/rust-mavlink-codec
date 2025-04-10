@@ -2,7 +2,7 @@ pub mod serde_impl;
 
 use bytes::Bytes;
 
-use super::{MavAutopilot, MavState, MavType};
+use crate::mav_types::field_types::*;
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HeartbeatMessage {

@@ -19,7 +19,11 @@ bench = false
 [dependencies]
 bytes = "1.10"
 log = "0.4"
-mavlink = { default-features = false, features = ["std", "ardupilotmega", "tokio-1"], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
+mavlink = { default-features = false, features = [
+    "std",
+    "ardupilotmega",
+    "tokio-1",
+], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
 thiserror = "2.0"
 tokio-util = { version = "0.7", features = ["codec"] }
 
@@ -37,10 +41,15 @@ std = []
 
 [dev-dependencies]
 anyhow = "1.0"
-criterion = { version =  "0.5", features = ["async_tokio"] }
+criterion = { version = "0.5", features = ["async_tokio"] }
 dev-utils = { path = "dev_utils" }
 futures = "0.3"
-mavlink = { default-features = false, features = ["std", "ardupilotmega", "tokio-1"], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
+mavlink = { default-features = false, features = [
+    "std",
+    "ardupilotmega",
+    "tokio-1",
+    "serde",
+], git = "https://github.com/mavlink/rust-mavlink", hash = "5f2ecbe8" }
 rand = "0.8"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
@@ -54,4 +63,8 @@ harness = false
 
 [[bench]]
 name = "compatibility_bench"
+harness = false
+
+[[bench]]
+name = "parser_bench"
 harness = false

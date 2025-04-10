@@ -6,8 +6,10 @@ pub mod rust_mavlink_compatibility;
 pub mod v1;
 pub mod v2;
 
-use bytes::Bytes;
+use bytes::{BufMut, Bytes};
 
+use error::DecoderError;
+use mav_types::mav_frame::MavFrame;
 use v1::{V1Packet, V1_STX};
 use v2::{V2Packet, V2_STX};
 
@@ -16,6 +18,13 @@ use v2::{V2Packet, V2_STX};
 pub enum Packet {
     V1(V1Packet) = V1_STX,
     V2(V2Packet) = V2_STX,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+pub enum PacketVersion {
+    V1 = V1_STX,
+    V2 = V2_STX,
 }
 
 impl Packet {
@@ -122,7 +131,77 @@ impl Packet {
             Packet::V2(v2_packet) => v2_packet.message_id(),
         }
     }
+
+    // // TODO: Maybe change this to from_frame!
+    // pub fn try_from_frame(frame: MavFrame, version: PacketVersion) -> Result<Self, DecoderError> {
+    //     match version {
+    //         PacketVersion::V1 => V1Packet::try_from(frame).map(Self::V1),
+    //         PacketVersion::V2 => V2Packet::try_from(frame).map(Self::V2),
+    //     }
+    // }
 }
+
+// // TODO: Maybe change this to From<>
+// impl TryFrom<MavFrame> for V1Packet {
+//     type Error = DecoderError;
+
+//     fn try_from(frame: MavFrame) -> Result<Self, Self::Error> {
+//         let payload = frame.message.bytes();
+
+//         let mut buffer = bytes::BytesMut::with_capacity(
+//             V1Packet::STX_SIZE + V1Packet::HEADER_SIZE + payload.len() + V1Packet::CHECKSUM_SIZE,
+//         );
+//         buffer.put_u8(V1_STX); // packet start
+//         buffer.put_u8(payload.len() as u8); // payload len
+//         buffer.put_u8(0); // packet sequence
+//         buffer.put_u8(frame.header.system_id);
+//         buffer.put_u8(frame.header.component_id);
+//         buffer.put_u32_le(
+//             frame
+//                 .header
+//                 .message_id
+//                 .unwrap_or_else(|| frame.message.id()),
+//         );
+//         buffer.extend_from_slice(payload);
+//         buffer.put_u16_le(
+//             0, // TODO: compute CRC
+//         );
+
+//         Ok(V1Packet::new(buffer.freeze()))
+//     }
+// }
+
+// // TODO: Maybe change this to From<>
+// impl TryFrom<MavFrame> for V2Packet {
+//     type Error = DecoderError;
+
+//     fn try_from(frame: MavFrame) -> Result<Self, Self::Error> {
+//         let payload = frame.message.bytes();
+
+//         let mut buffer = bytes::BytesMut::with_capacity(
+//             V2Packet::STX_SIZE + V2Packet::HEADER_SIZE + payload.len() + V2Packet::CHECKSUM_SIZE,
+//         );
+//         buffer.put_u8(V1_STX); // packet start
+//         buffer.put_u8(payload.len() as u8); // payload len
+//         buffer.put_u8(0); // incompat flags
+//         buffer.put_u8(0); // compat flags
+//         buffer.put_u8(0); // packet sequence
+//         buffer.put_u8(frame.header.system_id);
+//         buffer.put_u8(frame.header.component_id);
+//         buffer.put_u32(
+//             frame
+//                 .header
+//                 .message_id
+//                 .unwrap_or_else(|| frame.message.id()),
+//         );
+//         buffer.extend_from_slice(payload);
+//         buffer.put_u16_le(
+//             0, // TODO: compute CRC
+//         );
+
+//         Ok(V2Packet::new(buffer.freeze()))
+//     }
+// }
 
 /// Creates a `MavlinkCodec` with compile-time configuration.
 ///
