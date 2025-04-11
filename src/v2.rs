@@ -118,6 +118,24 @@ impl V2Packet {
     pub fn message_id(&self) -> u32 {
         msgid(&self.buffer)
     }
+
+    #[inline(always)]
+    pub(crate) fn frame_header_bytes(&self) -> Bytes {
+        const LEN_SIZE: usize = 1;
+        let header_start = V2Packet::STX_SIZE + LEN_SIZE;
+        let header_end = header_start + V2Packet::HEADER_SIZE;
+
+        self.buffer.slice(header_start..header_end)
+    }
+
+    #[inline(always)]
+    pub(crate) fn payload_bytes(&self) -> Bytes {
+        let payload_start = V2Packet::STX_SIZE + V2Packet::HEADER_SIZE;
+        let payload_size = *len(&self.buffer) as usize;
+        let payload_end = payload_start + payload_size;
+
+        self.buffer.slice(payload_start..payload_end)
+    }
 }
 
 #[inline(always)]

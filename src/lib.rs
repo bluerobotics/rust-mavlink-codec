@@ -1,5 +1,7 @@
 pub mod codec;
 pub mod error;
+pub mod mav_types;
+pub mod parser;
 pub mod rust_mavlink_compatibility;
 pub mod v1;
 pub mod v2;
@@ -14,6 +16,13 @@ use v2::{V2Packet, V2_STX};
 pub enum Packet {
     V1(V1Packet) = V1_STX,
     V2(V2Packet) = V2_STX,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+pub enum PacketVersion {
+    V1 = V1_STX,
+    V2 = V2_STX,
 }
 
 impl Packet {
@@ -120,6 +129,28 @@ impl Packet {
             Packet::V2(v2_packet) => v2_packet.message_id(),
         }
     }
+
+    fn header_bytes(&self) -> Bytes {
+        match self {
+            Packet::V1(v1_packet) => v1_packet.frame_header_bytes(),
+            Packet::V2(v2_packet) => v2_packet.frame_header_bytes(),
+        }
+    }
+
+    fn payload_bytes(&self) -> Bytes {
+        match self {
+            Packet::V1(v1_packet) => v1_packet.payload_bytes(),
+            Packet::V2(v2_packet) => v2_packet.payload_bytes(),
+        }
+    }
+
+    // // TODO: Maybe change this to from_frame!
+    // pub fn try_from_frame(frame: MavFrame, version: PacketVersion) -> Result<Self, DecoderError> {
+    //     match version {
+    //         PacketVersion::V1 => V1Packet::try_from(frame).map(Self::V1),
+    //         PacketVersion::V2 => V2Packet::try_from(frame).map(Self::V2),
+    //     }
+    // }
 }
 
 /// Creates a `MavlinkCodec` with compile-time configuration.
