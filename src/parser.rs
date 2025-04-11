@@ -1,6 +1,6 @@
 use crate::{
     error::DecoderError,
-    mav_types::mav_message::{heartbeat::HeartbeatMessage, MavMessage},
+    mav_types::mav_message::{heartbeat::HeartbeatMessage, MavMessage, MavMessageDef},
     v2::V2Packet,
     Packet,
 };
@@ -15,7 +15,7 @@ pub fn parse(packet: &Packet) -> Result<MavMessage, DecoderError> {
     let message_id = packet.message_id();
 
     match message_id {
-        HeartbeatMessage::ID => Ok(MavMessage::HEARTBEAT(HeartbeatMessage { buffer: payload })),
+        HeartbeatMessage::ID => Ok(MavMessage::Heartbeat(HeartbeatMessage { buffer: payload })),
         _ => Err(DecoderError::UnknownMessageID { msgid: message_id }),
     }
 }
@@ -51,7 +51,7 @@ mod tests {
         drop(packet); // Just to be sure the parsed message outlives the packet it came from
 
         dbg!(&parsed_message);
-        let MavMessage::HEARTBEAT(parsed_heartbeat_message_data) = parsed_message else {
+        let MavMessage::Heartbeat(parsed_heartbeat_message_data) = parsed_message else {
             panic!("Wrong message parsed!");
         };
         dbg!(&parsed_heartbeat_message_data);

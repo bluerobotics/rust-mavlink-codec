@@ -1,28 +1,37 @@
 pub mod serde_impl;
 
-use serde::de::{Deserialize, Deserializer};
-use serde::ser::{Serialize, Serializer};
-use serde_derive::{Deserialize, Serialize};
-use serde_derive::{Deserialize as DeriveDeserialize, Serialize as DeriveSerialize};
-
-use crate::{error::DecoderError, Packet};
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct MavHeader {
-    buffer: bytes::Bytes,
+    pub buffer: bytes::Bytes,
 }
 
 impl MavHeader {
+    pub fn new(bytes: bytes::Bytes) -> Self {
+        Self { buffer: bytes }
+    }
+
     pub fn sequence(&self) -> u8 {
-        todo!()
+        self.buffer[0]
     }
+
     pub fn system_id(&self) -> u8 {
-        todo!()
+        self.buffer[1]
     }
+
     pub fn component_id(&self) -> u8 {
-        todo!()
+        self.buffer[2]
     }
-    pub fn message_id(&self) -> u32 {
-        todo!()
+
+    pub fn message_id(&self) -> Option<u32> {
+        match self.buffer.len() {
+            4 => Some(u32::from_le_bytes([self.buffer[3], 0, 0, 0])),
+            6 => Some(u32::from_le_bytes([
+                self.buffer[3],
+                self.buffer[4],
+                self.buffer[5],
+                0,
+            ])),
+            _ => None,
+        }
     }
 }

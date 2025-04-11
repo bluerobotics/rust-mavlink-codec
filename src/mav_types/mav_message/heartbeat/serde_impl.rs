@@ -4,11 +4,12 @@ use serde::ser::{Serialize, Serializer};
 use serde_derive::{Deserialize as DeriveDeserialize, Serialize as DeriveSerialize};
 
 use crate::mav_types::field_types::*;
+use crate::mav_types::mav_message::MavMessageDef;
 use crate::mav_types::serde_utils::BitsField;
 
 use super::HeartbeatMessage;
 
-#[derive(DeriveSerialize, DeriveDeserialize)]
+#[derive(Debug, Clone, PartialEq, DeriveSerialize, DeriveDeserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct HeartbeatMessageSemanticModel {
     pub autopilot: MavAutopilot,
@@ -19,23 +20,42 @@ pub struct HeartbeatMessageSemanticModel {
     pub system_status: MavState,
 }
 
+impl From<&HeartbeatMessage> for HeartbeatMessageSemanticModel {
+    fn from(message: &HeartbeatMessage) -> Self {
+        HeartbeatMessageSemanticModel {
+            autopilot: message.autopilot(),
+            base_mode: BitsField {
+                bits: message.base_mode(),
+            },
+            custom_mode: message.custom_mode(),
+            mavlink_version: message.mavlink_version(),
+            mavtype: message.mav_type(),
+            system_status: message.system_status(),
+        }
+    }
+}
+
+impl From<&HeartbeatMessageSemanticModel> for HeartbeatMessage {
+    fn from(model: &HeartbeatMessageSemanticModel) -> Self {
+        let mut buffer = BytesMut::with_capacity(HeartbeatMessage::LEN as usize);
+
+        buffer.put_u32_le(model.custom_mode);
+        buffer.put_u8(model.mavtype as u8);
+        buffer.put_u8(model.autopilot as u8);
+        buffer.put_u8(model.base_mode.bits);
+        buffer.put_u8(model.system_status as u8);
+        buffer.put_u8(model.mavlink_version);
+
+        HeartbeatMessage::new(buffer.freeze())
+    }
+}
+
 impl Serialize for HeartbeatMessage {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let model = HeartbeatMessageSemanticModel {
-            autopilot: self.autopilot(),
-            base_mode: BitsField {
-                bits: self.base_mode(),
-            },
-            custom_mode: self.custom_mode(),
-            mavlink_version: self.mavlink_version(),
-            mavtype: self.mav_type(),
-            system_status: self.system_status(),
-        };
-
-        model.serialize(serializer)
+        HeartbeatMessageSemanticModel::from(self).serialize(serializer)
     }
 }
 
@@ -44,17 +64,9 @@ impl<'de> Deserialize<'de> for HeartbeatMessage {
     where
         D: Deserializer<'de>,
     {
-        let model = HeartbeatMessageSemanticModel::deserialize(deserializer)?;
-
-        let mut bytes = BytesMut::with_capacity(HeartbeatMessage::LEN as usize);
-        bytes.put_u32_le(model.custom_mode);
-        bytes.put_u8(model.mavtype as u8);
-        bytes.put_u8(model.autopilot as u8);
-        bytes.put_u8(model.base_mode.bits);
-        bytes.put_u8(model.system_status as u8);
-        bytes.put_u8(model.mavlink_version);
-
-        Ok(HeartbeatMessage::new(bytes.freeze()))
+        Ok(HeartbeatMessage::from(
+            &HeartbeatMessageSemanticModel::deserialize(deserializer)?,
+        ))
     }
 }
 

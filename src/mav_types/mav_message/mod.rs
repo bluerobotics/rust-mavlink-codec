@@ -1,29 +1,53 @@
 pub mod heartbeat;
+pub mod rc_channels;
 
-use heartbeat::HeartbeatMessage;
+use heartbeat::{serde_impl::HeartbeatMessageSemanticModel, HeartbeatMessage};
+use rc_channels::{serde_impl::RcChannelsMessageSemanticModel, RcChannelsMessage};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{error::DecoderError, Packet};
 
+pub trait MavMessageDef {
+    const ID: u32;
+    const LEN: u16;
+    const CRC: u32;
+
+    fn new(bytes: bytes::Bytes) -> Self;
+
+    fn bytes(&self) -> &bytes::Bytes;
+
+    fn as_slice(&self) -> &[u8];
+}
+
 #[repr(u32)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
-/// TODO: This needs to be generated
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MavMessage {
-    HEARTBEAT(HeartbeatMessage) = HeartbeatMessage::ID,
+    Heartbeat(HeartbeatMessage) = HeartbeatMessage::ID,
+    RcChannels(RcChannelsMessage) = RcChannelsMessage::ID,
     // ... and thousands of others
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MavMessageSemanticModel {
+    Heartbeat(HeartbeatMessageSemanticModel) = HeartbeatMessage::ID,
+    RcChannels(RcChannelsMessageSemanticModel) = RcChannelsMessage::ID,
 }
 
 impl MavMessage {
     pub fn bytes(&self) -> &bytes::Bytes {
         match self {
-            MavMessage::HEARTBEAT(heartbeat_message) => heartbeat_message.bytes(),
+            MavMessage::Heartbeat(heartbeat_message) => heartbeat_message.bytes(),
+            MavMessage::RcChannels(rc_channels_message) => rc_channels_message.bytes(),
         }
     }
 
     pub fn id(&self) -> u32 {
         match self {
-            MavMessage::HEARTBEAT(_) => HeartbeatMessage::ID,
+            MavMessage::Heartbeat(_) => HeartbeatMessage::ID,
+            MavMessage::RcChannels(_) => RcChannelsMessage::ID,
         }
     }
 }
@@ -33,5 +57,18 @@ impl TryFrom<&Packet> for MavMessage {
 
     fn try_from(value: &Packet) -> Result<Self, Self::Error> {
         crate::parser::parse(value)
+    }
+}
+
+impl From<&MavMessage> for MavMessageSemanticModel {
+    fn from(value: &MavMessage) -> Self {
+        match value {
+            MavMessage::Heartbeat(heartbeat_message) => MavMessageSemanticModel::Heartbeat(
+                HeartbeatMessageSemanticModel::from(heartbeat_message),
+            ),
+            MavMessage::RcChannels(rc_channels_message) => MavMessageSemanticModel::RcChannels(
+                RcChannelsMessageSemanticModel::from(rc_channels_message),
+            ),
+        }
     }
 }

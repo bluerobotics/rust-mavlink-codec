@@ -4,31 +4,35 @@ use bytes::Bytes;
 
 use crate::mav_types::field_types::*;
 
+use super::MavMessageDef;
+
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HeartbeatMessage {
     pub(crate) buffer: bytes::Bytes,
 }
 
-impl HeartbeatMessage {
-    pub const ID: u32 = 0;
-    pub const LEN: u16 = 9;
-    pub const CRC: u32 = 300;
+impl MavMessageDef for HeartbeatMessage {
+    const ID: u32 = 0;
+    const LEN: u16 = 9;
+    const CRC: u32 = 300;
 
     #[inline(always)]
-    pub fn new(bytes: Bytes) -> Self {
+    fn new(bytes: Bytes) -> Self {
         Self { buffer: bytes }
     }
 
     #[inline(always)]
-    pub fn bytes(&self) -> &Bytes {
+    fn bytes(&self) -> &Bytes {
         &self.buffer
     }
 
     #[inline(always)]
-    pub fn as_slice(&self) -> &[u8] {
+    fn as_slice(&self) -> &[u8] {
         &self.buffer[..]
     }
+}
 
+impl HeartbeatMessage {
     #[inline(always)]
     pub fn custom_mode(&self) -> u32 {
         if self.buffer.len() < 4 {
@@ -126,6 +130,7 @@ mod tests {
         };
         dbg!(&original_heartbeat_message_data);
 
+        // 2. Serialize it
         let mut slice = [0u8; mavlink::ardupilotmega::HEARTBEAT_DATA::ENCODED_LEN];
         mavlink::ardupilotmega::MavMessage::ser(
             &mavlink::ardupilotmega::MavMessage::HEARTBEAT(original_heartbeat_message_data.clone()),
@@ -134,6 +139,7 @@ mod tests {
         );
         dbg!(&slice);
 
+        // 3. Parse it using the new implementation
         let parsed_heartbeat_message_data = HeartbeatMessage::new(Bytes::copy_from_slice(&slice));
         dbg!(&parsed_heartbeat_message_data);
 

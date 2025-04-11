@@ -1,14 +1,13 @@
+use bytes::{BufMut, BytesMut};
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
-use serde_derive::{Deserialize, Serialize};
 use serde_derive::{Deserialize as DeriveDeserialize, Serialize as DeriveSerialize};
 
-use crate::{error::DecoderError, Packet};
+use crate::v2::V2Packet;
 
 use super::MavHeader;
 
-// #[repr(C, packed)]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, DeriveSerialize, DeriveDeserialize)]
 pub struct MavHeaderSemanticModel {
     pub sequence: u8,
     pub system_id: u8,
@@ -21,14 +20,7 @@ impl Serialize for MavHeader {
     where
         S: Serializer,
     {
-        let model = MavHeaderSemanticModel {
-            sequence: self.sequence(),
-            system_id: self.system_id(),
-            component_id: self.component_id(),
-            message_id: Some(self.message_id()),
-        };
-
-        model.serialize(serializer)
+        MavHeaderSemanticModel::from(self).serialize(serializer)
     }
 }
 
@@ -37,18 +29,25 @@ impl<'de> Deserialize<'de> for MavHeader {
     where
         D: Deserializer<'de>,
     {
-        // let model = MavHeaderSemanticModel::deserialize(deserializer)?;
+        let model = MavHeaderSemanticModel::deserialize(deserializer)?;
 
-        // let mut bytes = BytesMut::with_capacity(mav_header::LEN as usize);
-        // bytes.put_u32_le(model.custom_mode);
-        // bytes.put_u8(model.mavtype as u8);
-        // bytes.put_u8(model.autopilot as u8);
-        // bytes.put_u8(model.base_mode.bits);
-        // bytes.put_u8(model.system_status as u8);
-        // bytes.put_u8(model.mavlink_version);
+        let mut bytes = BytesMut::with_capacity(V2Packet::HEADER_SIZE);
+        bytes.put_u8(model.sequence);
+        bytes.put_u8(model.system_id);
+        bytes.put_u8(model.component_id);
+        bytes.put_u32(model.message_id.unwrap_or_default());
 
-        // Ok(mav_header::new(bytes.freeze()))
+        Ok(Self::new(bytes.freeze()))
+    }
+}
 
-        todo!()
+impl From<&MavHeader> for MavHeaderSemanticModel {
+    fn from(header: &MavHeader) -> Self {
+        MavHeaderSemanticModel {
+            sequence: header.sequence(),
+            system_id: header.system_id(),
+            component_id: header.component_id(),
+            message_id: header.message_id(),
+        }
     }
 }

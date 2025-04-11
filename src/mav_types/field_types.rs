@@ -1,3 +1,4 @@
+// use bitflags::bitflags;
 // use classic_bitfield::bitfield_enum;
 use serde_derive::{Deserialize, Serialize};
 
@@ -96,7 +97,7 @@ pub enum MavState {
 }
 
 // #[bitfield_enum(as u8)]
-// #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, , Immutable)]
+// #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 // pub enum MavModeFlag {
 //     MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
 //     MAV_MODE_FLAG_TEST_ENABLED,
@@ -111,5 +112,24 @@ pub enum MavState {
 // impl Default for MavModeFlag {
 //     fn default() -> Self {
 //         Self(128)
+//     }
+// }
+
+// bitflags! {
+//     #[derive (Debug, Clone, PartialEq, Serialize , Deserialize)]
+//     pub struct MavModeFlag : u8 {
+//         const MAV_MODE_FLAG_SAFETY_ARMED = 128 ;
+//         const MAV_MODE_FLAG_MANUAL_INPUT_ENABLED = 64 ;
+//         const MAV_MODE_FLAG_HIL_ENABLED = 32 ;
+//         const MAV_MODE_FLAG_STABILIZE_ENABLED = 16 ;
+//         const MAV_MODE_FLAG_GUIDED_ENABLED = 8 ;
+//         const MAV_MODE_FLAG_AUTO_ENABLED = 4 ;
+//         const MAV_MODE_FLAG_TEST_ENABLED = 2 ;
+//         const MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1 ;
+//     }
+// }
+// impl Default for MavModeFlag {
+//     fn default() -> Self {
+//         Self::MAV_MODE_FLAG_SAFETY_ARMED
 //     }
 // }

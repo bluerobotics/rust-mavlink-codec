@@ -1,14 +1,15 @@
 pub mod serde_impl;
 
-use serde::de::{Deserialize, Deserializer};
-use serde::ser::{Serialize, Serializer};
-use serde_derive::{Deserialize, Serialize};
-use serde_derive::{Deserialize as DeriveDeserialize, Serialize as DeriveSerialize};
+use serde_impl::MavFrameSemanticModel;
 
-use crate::{error::DecoderError, Packet};
+use crate::{v1::V1Packet, v2::V2Packet, Packet, PacketVersion};
 
-use super::mav_header::MavHeader;
-use super::mav_message::MavMessage;
+use super::{
+    mav_header::MavHeader,
+    mav_message::{
+        heartbeat::HeartbeatMessage, rc_channels::RcChannelsMessage, MavMessage, MavMessageDef,
+    },
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MavFrame {
@@ -16,11 +17,41 @@ pub struct MavFrame {
 }
 
 impl MavFrame {
-    pub fn header() -> MavHeader {
-        todo!()
+    pub fn new(model: &MavFrameSemanticModel, version: PacketVersion) -> Self {
+        let packet = match version {
+            PacketVersion::V1 => Packet::V1(V1Packet::from(model)),
+            PacketVersion::V2 => Packet::V2(V2Packet::from(model)),
+        };
+
+        Self { packet }
     }
 
-    pub fn message() -> MavMessage {
-        todo!()
+    pub fn header(&self) -> MavHeader {
+        MavHeader::new(self.packet.header_bytes())
+    }
+
+    pub fn message(&self) -> MavMessage {
+        let message_id = self.packet.message_id();
+        match message_id {
+            HeartbeatMessage::ID => {
+                MavMessage::Heartbeat(HeartbeatMessage::new(self.packet.payload_bytes()))
+            }
+            RcChannelsMessage::ID => {
+                MavMessage::RcChannels(RcChannelsMessage::new(self.packet.payload_bytes()))
+            }
+            _ => unreachable!("Unknown ID"), // Unreachable because of the check during the MavFrame creation
+        }
+    }
+}
+
+impl From<Packet> for MavFrame {
+    fn from(value: Packet) -> Self {
+        Self { packet: value }
+    }
+}
+
+impl From<MavFrame> for Packet {
+    fn from(value: MavFrame) -> Self {
+        value.packet
     }
 }

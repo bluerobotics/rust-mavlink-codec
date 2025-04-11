@@ -29,6 +29,7 @@ tokio-util = { version = "0.7", features = ["codec"] }
 
 # Experimenting:
 # classic-bitfield = { version = "0.2.3", features = ["serde"] }
+# bitflags = { version = "2.9.0", features = ["serde"]}
 
 # TODO: Add feature "serde"
 serde = "1.0.219"
