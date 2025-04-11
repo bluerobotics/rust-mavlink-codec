@@ -69,3 +69,11 @@ harness = false
 [[bench]]
 name = "parser_bench"
 harness = false
+
+[profile.profiling]
+inherits = "release"
+debug = 1
+jemalloc = false
+
+[profile.bench]
+inherits = "release"

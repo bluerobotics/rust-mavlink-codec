@@ -39,18 +39,38 @@ impl MavFrame {
             RcChannelsMessage::ID => {
                 MavMessage::RcChannels(RcChannelsMessage::new(self.packet.payload_bytes()))
             }
-            _ => unreachable!("Unknown ID"), // Unreachable because of the check during the MavFrame creation
+            unknown_id => {
+                Err(format!("Unknown ID: {unknown_id:?}")).unwrap() // Unreachable because of the check during the MavFrame creation
+            }
         }
     }
 }
 
+impl From<&Packet> for MavFrame {
+    #[inline(always)]
+    fn from(value: &Packet) -> Self {
+        Self {
+            packet: value.clone(),
+        }
+    }
+}
+
+impl From<&MavFrame> for Packet {
+    #[inline(always)]
+    fn from(value: &MavFrame) -> Self {
+        value.packet.clone()
+    }
+}
+
 impl From<Packet> for MavFrame {
+    #[inline(always)]
     fn from(value: Packet) -> Self {
         Self { packet: value }
     }
 }
 
 impl From<MavFrame> for Packet {
+    #[inline(always)]
     fn from(value: MavFrame) -> Self {
         value.packet
     }
