@@ -83,7 +83,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn stx(&self) -> &u8 {
+    pub fn stx(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.stx(),
             Packet::V2(v2_packet) => v2_packet.stx(),
@@ -91,7 +91,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn payload_length(&self) -> &u8 {
+    pub fn payload_length(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.payload_length(),
             Packet::V2(v2_packet) => v2_packet.payload_length(),
@@ -99,7 +99,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn sequence(&self) -> &u8 {
+    pub fn sequence(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.sequence(),
             Packet::V2(v2_packet) => v2_packet.sequence(),
@@ -107,7 +107,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn system_id(&self) -> &u8 {
+    pub fn system_id(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.system_id(),
             Packet::V2(v2_packet) => v2_packet.system_id(),
@@ -115,7 +115,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn component_id(&self) -> &u8 {
+    pub fn component_id(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.component_id(),
             Packet::V2(v2_packet) => v2_packet.component_id(),
@@ -125,7 +125,7 @@ impl Packet {
     #[inline(always)]
     pub fn message_id(&self) -> u32 {
         match self {
-            Packet::V1(v1_packet) => *v1_packet.message_id() as u32,
+            Packet::V1(v1_packet) => v1_packet.message_id() as u32,
             Packet::V2(v2_packet) => v2_packet.message_id(),
         }
     }

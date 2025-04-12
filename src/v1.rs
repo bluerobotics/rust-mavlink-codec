@@ -66,33 +66,33 @@ impl V1Packet {
     }
 
     #[inline(always)]
-    pub fn stx(&self) -> &u8 {
-        stx(&self.buffer)
+    pub fn stx(&self) -> u8 {
+        *stx(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn payload_length(&self) -> &u8 {
-        len(&self.buffer)
+    pub fn payload_length(&self) -> u8 {
+        *len(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn sequence(&self) -> &u8 {
-        seq(&self.buffer)
+    pub fn sequence(&self) -> u8 {
+        *seq(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn system_id(&self) -> &u8 {
-        sysid(&self.buffer)
+    pub fn system_id(&self) -> u8 {
+        *sysid(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn component_id(&self) -> &u8 {
-        compid(&self.buffer)
+    pub fn component_id(&self) -> u8 {
+        *compid(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn message_id(&self) -> &u8 {
-        msgid(&self.buffer)
+    pub fn message_id(&self) -> u8 {
+        *msgid(&self.buffer)
     }
 
     #[inline(always)]
@@ -283,12 +283,12 @@ mod test {
         let v1_packet = V1Packet::from(raw_v1_message);
 
         assert_eq!(v1_packet.header(), raw_v1_message.clone().header()); // Todo: remote this clone once [this PR](https://github.com/mavlink/rust-mavlink/pull/288) get merged upstream
-        assert_eq!(*v1_packet.stx(), raw_v1_message.raw_bytes()[0]);
-        assert_eq!(*v1_packet.payload_length(), raw_v1_message.payload_length());
-        assert_eq!(*v1_packet.sequence(), raw_v1_message.sequence());
-        assert_eq!(*v1_packet.system_id(), raw_v1_message.system_id());
-        assert_eq!(*v1_packet.component_id(), raw_v1_message.component_id());
-        assert_eq!(*v1_packet.message_id(), raw_v1_message.message_id());
+        assert_eq!(v1_packet.stx(), raw_v1_message.raw_bytes()[0]);
+        assert_eq!(v1_packet.payload_length(), raw_v1_message.payload_length());
+        assert_eq!(v1_packet.sequence(), raw_v1_message.sequence());
+        assert_eq!(v1_packet.system_id(), raw_v1_message.system_id());
+        assert_eq!(v1_packet.component_id(), raw_v1_message.component_id());
+        assert_eq!(v1_packet.message_id(), raw_v1_message.message_id());
         assert_eq!(v1_packet.payload(), raw_v1_message.payload());
         assert_eq!(v1_packet.checksum(), raw_v1_message.checksum());
     }
