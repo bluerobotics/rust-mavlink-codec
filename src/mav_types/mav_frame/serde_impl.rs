@@ -61,11 +61,13 @@ impl From<&MavFrameSemanticModel> for V1Packet {
             V1Packet::STX_SIZE + V1Packet::HEADER_SIZE + payload_len + V1Packet::CHECKSUM_SIZE,
         );
 
-        buffer.put_u8(V1_STX); // packet start
-        buffer.put_u8(payload_len as u8); // payload len
-        buffer.put_u8(0); // packet sequence
-        buffer.put_u8(frame.header.system_id());
-        buffer.put_u8(frame.header.component_id());
+        buffer.extend_from_slice(&[
+            V1_STX,                      // packet start
+            payload_len as u8,           // payload len
+            0,                           // packet sequence
+            frame.header.system_id(),    // system id
+            frame.header.component_id(), // component id
+        ]);
         buffer.put_u32_le(
             frame
                 .header
@@ -89,13 +91,15 @@ impl From<&MavFrameSemanticModel> for V2Packet {
         let mut buffer = bytes::BytesMut::with_capacity(
             V2Packet::STX_SIZE + V2Packet::HEADER_SIZE + payload_len + V2Packet::CHECKSUM_SIZE,
         );
-        buffer.put_u8(V2_STX); // packet start
-        buffer.put_u8(payload_len as u8); // payload len
-        buffer.put_u8(0); // incompat flags
-        buffer.put_u8(0); // compat flags
-        buffer.put_u8(0); // packet sequence
-        buffer.put_u8(frame.header.system_id());
-        buffer.put_u8(frame.header.component_id());
+        buffer.extend_from_slice(&[
+            V2_STX,                      // packet start
+            payload_len as u8,           // payload len
+            0,                           // incompat flags
+            0,                           // compat flags
+            0,                           // packet sequence
+            frame.header.system_id(),    // system id
+            frame.header.component_id(), // component id
+        ]);
         buffer.put_u32_le(
             frame
                 .header
