@@ -31,8 +31,7 @@ impl MavFrame {
     }
 
     pub fn message(&self) -> MavMessage {
-        let message_id = self.packet.message_id();
-        match message_id {
+        match self.packet.message_id() {
             HeartbeatMessage::ID => {
                 MavMessage::Heartbeat(HeartbeatMessage::new(self.packet.payload_bytes()))
             }
