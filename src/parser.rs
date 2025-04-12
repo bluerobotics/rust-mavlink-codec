@@ -7,7 +7,7 @@ use crate::{
 
 pub fn parse(packet: &Packet) -> Result<MavMessage, DecoderError> {
     let payload_start = V2Packet::STX_SIZE + V2Packet::HEADER_SIZE;
-    let payload_end = payload_start + *packet.payload_length() as usize;
+    let payload_end = payload_start + packet.payload_length() as usize;
 
     // This increases the reference counter from the original packet.buffer, so it is guarantee to exist beyond packet's life
     let payload = packet.bytes().slice(payload_start..payload_end);

@@ -426,9 +426,9 @@ fn mavframe_from_packet_new(packet: &Packet) -> mavlink_codec::mav_types::mav_fr
 #[inline(always)]
 fn mavframe_from_packet_old(packet: &Packet) -> MAVLinkMessage<mavlink::ardupilotmega::MavMessage> {
     let header = mavlink::MavHeader {
-        sequence: *packet.sequence(),
-        system_id: *packet.system_id(),
-        component_id: *packet.component_id(),
+        sequence: packet.sequence(),
+        system_id: packet.system_id(),
+        component_id: packet.component_id(),
     };
 
     let version = match &packet {
