@@ -30,6 +30,9 @@ tokio-util = { version = "0.7", features = ["codec"] }
 # Experimenting:
 # classic-bitfield = { version = "0.2.3", features = ["serde"] }
 # bitflags = { version = "2.9.0", features = ["serde"]}
+phf = { version = "0.11", features = ["macros"] }
+enum-primitive-derive = "0.3.0"
+num-traits = "0.2.0"
 
 # TODO: Add feature "serde"
 serde = "1.0.219"
@@ -43,6 +46,7 @@ std = []
 [dev-dependencies]
 anyhow = "1.0"
 criterion = { version = "0.5", features = ["async_tokio"] }
+divan = { version = "0.1" }
 dev-utils = { path = "dev_utils" }
 futures = "0.3"
 mavlink = { default-features = false, features = [

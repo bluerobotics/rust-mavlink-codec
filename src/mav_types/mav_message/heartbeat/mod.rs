@@ -1,10 +1,11 @@
 pub mod serde_impl;
 
 use bytes::Bytes;
+use num_traits::ToPrimitive;
 
-use crate::mav_types::field_types::*;
+use crate::{define_mav_message_fields, mav_types::field_types::*};
 
-use super::MavMessageDef;
+use super::{MavMessageDef, MavMessageFields};
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HeartbeatMessage {
@@ -29,6 +30,27 @@ impl MavMessageDef for HeartbeatMessage {
     #[inline(always)]
     fn as_slice(&self) -> &[u8] {
         &self.buffer[..]
+    }
+}
+
+define_mav_message_fields!(HeartbeatMessage, HEARTBEAT_MESSAGE_FIELDS, {
+    "custom_mode" => custom_mode() => (serde_json::Value::from),
+    "mav_type"    => mav_type()    => (|v: MavType| serde_json::Value::from(v.to_u8().unwrap())),
+    "autopilot" => autopilot() => (|v: MavAutopilot| serde_json::Value::from(v.to_u8().unwrap())),
+    "base_mode" => base_mode() => (serde_json::Value::from),
+    "system_status" => system_status() => (|v: MavState| serde_json::Value::from(v.to_u8().unwrap())),
+    "mavlink_version" => mavlink_version() => (serde_json::Value::from),
+});
+
+impl MavMessageFields for HeartbeatMessage {
+    fn fields(
+        &self,
+    ) -> &'static phf::Map<&'static str, fn(&dyn MavMessageFields) -> serde_json::Value> {
+        &HEARTBEAT_MESSAGE_FIELDS
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

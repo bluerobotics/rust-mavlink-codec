@@ -1,9 +1,10 @@
+use enum_primitive_derive::Primitive;
 // use bitflags::bitflags;
 // use classic_bitfield::bitfield_enum;
 use serde_derive::{Deserialize, Serialize};
 
 #[repr(u8)]
-#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize, Primitive)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MavType {
     #[default]
@@ -53,7 +54,7 @@ pub enum MavType {
 }
 
 #[repr(u8)]
-#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize, Primitive)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MavAutopilot {
     #[default]
@@ -81,7 +82,7 @@ pub enum MavAutopilot {
 }
 
 #[repr(u8)]
-#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Serialize, Deserialize, Primitive)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MavState {
     #[default]
@@ -97,7 +98,7 @@ pub enum MavState {
 }
 
 // #[bitfield_enum(as u8)]
-// #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+// #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Primitive)]
 // pub enum MavModeFlag {
 //     MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
 //     MAV_MODE_FLAG_TEST_ENABLED,

@@ -76,6 +76,24 @@ fn benchmark_packet_to_mavframe(c: &mut Criterion) {
             }
         });
 
+        if *messages_count == 1 {
+            group.bench_function(BenchmarkId::new("new_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| black_box(mavframe_from_packet_new(&packet)),
+                    BatchSize::SmallInput,
+                )
+            });
+
+            group.bench_function(BenchmarkId::new("old_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| black_box(mavframe_from_packet_old(&packet)),
+                    BatchSize::SmallInput,
+                )
+            });
+        }
+
         group.bench_function(BenchmarkId::new("new_nodrop", messages_count), |b| {
             b.iter_batched(
                 || decoded_packets.clone(),
@@ -141,7 +159,7 @@ fn benchmark_packet_to_json_value(c: &mut Criterion) {
         .sample_size(100)
         .plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
 
-    for messages_count in &vec![1, 100, 10000] {
+    for messages_count in &vec![1] {
         group.throughput(Throughput::Elements(*messages_count));
 
         let mut buf: Vec<u8> =
@@ -162,6 +180,32 @@ fn benchmark_packet_to_json_value(c: &mut Criterion) {
                 decoded_packets.push(decodec_packet)
             }
         });
+
+        if *messages_count == 1 {
+            group.bench_function(BenchmarkId::new("new_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| {
+                        let frame = mavframe_from_packet_new(&packet);
+
+                        black_box(serde_json::to_value(&frame).unwrap())
+                    },
+                    BatchSize::SmallInput,
+                )
+            });
+
+            group.bench_function(BenchmarkId::new("old_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| {
+                        let frame = mavframe_from_packet_old(&packet);
+
+                        black_box(serde_json::to_value(&frame).unwrap())
+                    },
+                    BatchSize::SmallInput,
+                )
+            });
+        }
 
         group.bench_function(BenchmarkId::new("new_nodrop", messages_count), |b| {
             b.iter_batched(
@@ -229,6 +273,183 @@ fn benchmark_packet_to_json_value(c: &mut Criterion) {
     group.finish();
 }
 
+fn benchmark_get_json_fields(c: &mut Criterion) {
+    let seed = 42;
+    println!("Using seed {seed:?}");
+    let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
+
+    let mut group = c.benchmark_group("get_json_fields");
+    group
+        .confidence_level(0.95)
+        .sample_size(100)
+        .plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
+
+    for messages_count in &vec![1, 10000] {
+        group.throughput(Throughput::Elements(*messages_count));
+
+        let mut buf: Vec<u8> =
+            Vec::with_capacity(V2Packet::MAX_PACKET_SIZE * *messages_count as usize);
+        for _ in 0..*messages_count {
+            add_random_v2_message(&mut buf, &mut rng);
+        }
+
+        let mut decoded_packets = Vec::with_capacity(*messages_count as usize);
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let mut buf = bytes::BytesMut::from(buf.as_slice());
+            let mut codec = MavlinkCodec::<true, true, false, false, false, false>::default();
+
+            for _ in 0..*messages_count {
+                let decodec_packet = codec.decode(&mut buf).unwrap().unwrap().unwrap();
+                decoded_packets.push(decodec_packet)
+            }
+        });
+
+        if *messages_count == 1 {
+            group.bench_function(BenchmarkId::new("new_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| {
+                        let frame = mavframe_from_packet_new(&packet);
+
+                        black_box(get_json_fields_new(frame))
+                    },
+                    BatchSize::SmallInput,
+                )
+            });
+
+            group.bench_function(BenchmarkId::new("old_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| {
+                        let frame = mavframe_from_packet_old(&packet);
+
+                        black_box(get_json_fields_old(frame))
+                    },
+                    BatchSize::SmallInput,
+                )
+            });
+        }
+
+        group.bench_function(BenchmarkId::new("new_nodrop", messages_count), |b| {
+            b.iter_batched(
+                || decoded_packets.clone(),
+                |decoded_packets| {
+                    decoded_packets
+                        .iter()
+                        .map(|packet| {
+                            let frame = mavframe_from_packet_new(packet);
+
+                            black_box(get_json_fields_new(frame))
+                        })
+                        .collect::<Vec<_>>()
+                },
+                BatchSize::SmallInput,
+            )
+        });
+
+        group.bench_function(BenchmarkId::new("old_nodrop", messages_count), |b| {
+            b.iter_batched(
+                || decoded_packets.clone(),
+                |decoded_packets| {
+                    decoded_packets
+                        .iter()
+                        .map(|packet| {
+                            let frame = mavframe_from_packet_old(packet);
+
+                            black_box(get_json_fields_old(frame))
+                        })
+                        .collect::<Vec<_>>()
+                },
+                BatchSize::SmallInput,
+            )
+        });
+
+        group.bench_function(BenchmarkId::new("new_drop", messages_count), |b| {
+            b.iter_batched(
+                || decoded_packets.clone(),
+                |decoded_packets| {
+                    decoded_packets.iter().for_each(|packet| {
+                        let frame = mavframe_from_packet_new(packet);
+
+                        let _fields = black_box(get_json_fields_new(frame));
+                    })
+                },
+                BatchSize::SmallInput,
+            )
+        });
+
+        group.bench_function(BenchmarkId::new("old_drop", messages_count), |b| {
+            b.iter_batched(
+                || decoded_packets.clone(),
+                |decoded_packets| {
+                    decoded_packets.iter().for_each(|packet| {
+                        let frame = mavframe_from_packet_old(packet);
+
+                        let _fields = black_box(get_json_fields_old(frame));
+                    })
+                },
+                BatchSize::SmallInput,
+            )
+        });
+    }
+
+    group.finish();
+}
+
+fn get_json_fields_new(
+    frame: mavlink_codec::mav_types::mav_frame::MavFrame,
+) -> Vec<(String, String)> {
+    let message = frame.message();
+
+    let message_fields = mavlink_codec::mav_types::mav_message::MavMessageFields::fields(&message);
+
+    message_fields
+        .entries()
+        .map(|(message_field_name, message_field_function)| {
+            let message_field_value = message_field_function(&message);
+
+            (
+                format!(
+                    "{}/{}/{}/{}",
+                    frame.header().system_id(),
+                    frame.header().component_id(),
+                    frame.message().id(),
+                    message_field_name
+                ),
+                message_field_value.to_string(),
+            )
+        })
+        .collect::<Vec<_>>()
+}
+
+fn get_json_fields_old(
+    frame: MAVLinkMessage<mavlink::ardupilotmega::MavMessage>,
+) -> Vec<(String, String)> {
+    let value = serde_json::to_value(&frame).unwrap();
+
+    let serde_json::Value::Object(message_fields) = value else {
+        unreachable!()
+    };
+
+    message_fields
+        .iter()
+        .map(|(message_field_name, message_field_value)| {
+            (
+                format!(
+                    "{}/{}/{}/{}",
+                    frame.header.system_id,
+                    frame.header.component_id,
+                    frame.message.message_id(),
+                    message_field_name
+                ),
+                message_field_value.to_string(),
+            )
+        })
+        .collect::<Vec<_>>()
+}
+
 fn benchmark_packet_to_json_string(c: &mut Criterion) {
     let seed = 42;
     println!("Using seed {seed:?}");
@@ -240,7 +461,7 @@ fn benchmark_packet_to_json_string(c: &mut Criterion) {
         .sample_size(100)
         .plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
 
-    for messages_count in &vec![1, 100, 10000] {
+    for messages_count in &vec![1, 10000] {
         group.throughput(Throughput::Elements(*messages_count));
 
         let mut buf: Vec<u8> =
@@ -260,6 +481,32 @@ fn benchmark_packet_to_json_string(c: &mut Criterion) {
                 decoded_packets.push(decodec_packet)
             }
         });
+
+        if *messages_count == 1 {
+            group.bench_function(BenchmarkId::new("new_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| {
+                        let frame = mavframe_from_packet_new(&packet);
+
+                        black_box(serde_json::to_string_pretty(&frame).unwrap())
+                    },
+                    BatchSize::SmallInput,
+                )
+            });
+
+            group.bench_function(BenchmarkId::new("old_single_nodrop", messages_count), |b| {
+                b.iter_batched(
+                    || decoded_packets[0].clone(),
+                    |packet| {
+                        let frame = mavframe_from_packet_old(&packet);
+
+                        black_box(serde_json::to_string_pretty(&frame).unwrap())
+                    },
+                    BatchSize::SmallInput,
+                )
+            });
+        }
 
         group.bench_function(BenchmarkId::new("new_nodrop", messages_count), |b| {
             b.iter_batched(
@@ -594,10 +841,11 @@ fn mavframe_from_packet_old(packet: &Packet) -> MAVLinkMessage<mavlink::ardupilo
 
 criterion_group!(
     benches,
-    benchmark_packet_to_mavframe,
-    benchmark_packet_to_json_value,
-    benchmark_packet_to_json_string,
-    benchmark_from_json_string_to_frame,
-    benchmark_from_json_string_to_packet,
+    // benchmark_packet_to_mavframe,
+    // benchmark_packet_to_json_value,
+    benchmark_get_json_fields,
+    // benchmark_packet_to_json_string,
+    // benchmark_from_json_string_to_frame,
+    // benchmark_from_json_string_to_packet,
 );
 criterion_main!(benches);

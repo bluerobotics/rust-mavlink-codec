@@ -1,6 +1,8 @@
 use bytes::Bytes;
 
-use crate::mav_types::mav_message::MavMessageDef;
+use crate::{define_mav_message_fields, mav_types::mav_message::MavMessageDef};
+
+use super::MavMessageFields;
 
 pub mod serde_impl;
 
@@ -46,6 +48,43 @@ macro_rules! impl_chan_raw_accessor {
             u16::from_le_bytes(bytes)
         }
     };
+}
+
+define_mav_message_fields!(RcChannelsMessage, RC_CHANNELS_MESSAGE_FIELDS, {
+
+    "time_boot_ms" => time_boot_ms() => (serde_json::Value::from),
+    "chan1_raw" => chan1_raw() => (serde_json::Value::from),
+    "chan2_raw" => chan2_raw() => (serde_json::Value::from),
+    "chan3_raw" => chan3_raw() => (serde_json::Value::from),
+    "chan4_raw" => chan4_raw() => (serde_json::Value::from),
+    "chan5_raw" => chan5_raw() => (serde_json::Value::from),
+    "chan6_raw" => chan6_raw() => (serde_json::Value::from),
+    "chan7_raw" => chan7_raw() => (serde_json::Value::from),
+    "chan8_raw" => chan8_raw() => (serde_json::Value::from),
+    "chan9_raw" => chan9_raw() => (serde_json::Value::from),
+    "chan10_raw" => chan10_raw() => (serde_json::Value::from),
+    "chan11_raw" => chan11_raw() => (serde_json::Value::from),
+    "chan12_raw" => chan12_raw() => (serde_json::Value::from),
+    "chan13_raw" => chan13_raw() => (serde_json::Value::from),
+    "chan14_raw" => chan14_raw() => (serde_json::Value::from),
+    "chan15_raw" => chan15_raw() => (serde_json::Value::from),
+    "chan16_raw" => chan16_raw() => (serde_json::Value::from),
+    "chan17_raw" => chan17_raw() => (serde_json::Value::from),
+    "chan18_raw" => chan18_raw() => (serde_json::Value::from),
+    "chancount" => chancount() =>(serde_json::Value::from),
+    "rssi" => rssi() =>(serde_json::Value::from),
+});
+
+impl MavMessageFields for RcChannelsMessage {
+    fn fields(
+        &self,
+    ) -> &'static phf::Map<&'static str, fn(&dyn MavMessageFields) -> serde_json::Value> {
+        &RC_CHANNELS_MESSAGE_FIELDS
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl RcChannelsMessage {
