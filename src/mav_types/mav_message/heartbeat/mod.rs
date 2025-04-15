@@ -1,7 +1,6 @@
 pub mod serde_impl;
 
 use bytes::Bytes;
-use num_traits::ToPrimitive;
 
 use crate::{define_mav_message_fields, mav_types::field_types::*};
 
@@ -35,10 +34,10 @@ impl MavMessageDef for HeartbeatMessage {
 
 define_mav_message_fields!(HeartbeatMessage, HEARTBEAT_MESSAGE_FIELDS, {
     "custom_mode" => custom_mode() => (serde_json::Value::from),
-    "mav_type"    => mav_type()    => (|v: MavType| serde_json::Value::from(v.to_u8().unwrap())),
-    "autopilot" => autopilot() => (|v: MavAutopilot| serde_json::Value::from(v.to_u8().unwrap())),
+    "mav_type"    => mav_type()    => (|v: MavType| serde_json::Value::from(v as u8)),
+    "autopilot" => autopilot() => (|v: MavAutopilot| serde_json::Value::from(v as u8)),
     "base_mode" => base_mode() => (serde_json::Value::from),
-    "system_status" => system_status() => (|v: MavState| serde_json::Value::from(v.to_u8().unwrap())),
+    "system_status" => system_status() => (|v: MavState| serde_json::Value::from(v as u8)),
     "mavlink_version" => mavlink_version() => (serde_json::Value::from),
 });
 
