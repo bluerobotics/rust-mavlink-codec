@@ -66,33 +66,51 @@ impl V1Packet {
     }
 
     #[inline(always)]
-    pub fn stx(&self) -> &u8 {
-        stx(&self.buffer)
+    pub fn stx(&self) -> u8 {
+        *stx(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn payload_length(&self) -> &u8 {
-        len(&self.buffer)
+    pub fn payload_length(&self) -> u8 {
+        *len(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn sequence(&self) -> &u8 {
-        seq(&self.buffer)
+    pub fn sequence(&self) -> u8 {
+        *seq(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn system_id(&self) -> &u8 {
-        sysid(&self.buffer)
+    pub fn system_id(&self) -> u8 {
+        *sysid(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn component_id(&self) -> &u8 {
-        compid(&self.buffer)
+    pub fn component_id(&self) -> u8 {
+        *compid(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn message_id(&self) -> &u8 {
-        msgid(&self.buffer)
+    pub fn message_id(&self) -> u8 {
+        *msgid(&self.buffer)
+    }
+
+    #[inline(always)]
+    pub(crate) fn frame_header_bytes(&self) -> Bytes {
+        const LEN_SIZE: usize = 1;
+        let header_start = V1Packet::STX_SIZE + LEN_SIZE;
+        let header_end = header_start + V1Packet::HEADER_SIZE;
+
+        self.buffer.slice(header_start..header_end)
+    }
+
+    #[inline(always)]
+    pub(crate) fn payload_bytes(&self) -> Bytes {
+        let payload_start = V1Packet::STX_SIZE + V1Packet::HEADER_SIZE;
+        let payload_size = *len(&self.buffer) as usize;
+        let payload_end = payload_start + payload_size;
+
+        self.buffer.slice(payload_start..payload_end)
     }
 }
 
@@ -265,12 +283,12 @@ mod test {
         let v1_packet = V1Packet::from(raw_v1_message);
 
         assert_eq!(v1_packet.header(), raw_v1_message.clone().header()); // Todo: remote this clone once [this PR](https://github.com/mavlink/rust-mavlink/pull/288) get merged upstream
-        assert_eq!(*v1_packet.stx(), raw_v1_message.raw_bytes()[0]);
-        assert_eq!(*v1_packet.payload_length(), raw_v1_message.payload_length());
-        assert_eq!(*v1_packet.sequence(), raw_v1_message.sequence());
-        assert_eq!(*v1_packet.system_id(), raw_v1_message.system_id());
-        assert_eq!(*v1_packet.component_id(), raw_v1_message.component_id());
-        assert_eq!(*v1_packet.message_id(), raw_v1_message.message_id());
+        assert_eq!(v1_packet.stx(), raw_v1_message.raw_bytes()[0]);
+        assert_eq!(v1_packet.payload_length(), raw_v1_message.payload_length());
+        assert_eq!(v1_packet.sequence(), raw_v1_message.sequence());
+        assert_eq!(v1_packet.system_id(), raw_v1_message.system_id());
+        assert_eq!(v1_packet.component_id(), raw_v1_message.component_id());
+        assert_eq!(v1_packet.message_id(), raw_v1_message.message_id());
         assert_eq!(v1_packet.payload(), raw_v1_message.payload());
         assert_eq!(v1_packet.checksum(), raw_v1_message.checksum());
     }

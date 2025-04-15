@@ -80,43 +80,61 @@ impl V2Packet {
     }
 
     #[inline(always)]
-    pub fn stx(&self) -> &u8 {
-        stx(&self.buffer)
+    pub fn stx(&self) -> u8 {
+        *stx(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn payload_length(&self) -> &u8 {
-        len(&self.buffer)
+    pub fn payload_length(&self) -> u8 {
+        *len(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn incompatibility_flags(&self) -> &u8 {
-        incompat_flags(&self.buffer)
+    pub fn incompatibility_flags(&self) -> u8 {
+        *incompat_flags(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn compatibility_flags(&self) -> &u8 {
-        compat_flags(&self.buffer)
+    pub fn compatibility_flags(&self) -> u8 {
+        *compat_flags(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn sequence(&self) -> &u8 {
-        seq(&self.buffer)
+    pub fn sequence(&self) -> u8 {
+        *seq(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn system_id(&self) -> &u8 {
-        sysid(&self.buffer)
+    pub fn system_id(&self) -> u8 {
+        *sysid(&self.buffer)
     }
 
     #[inline(always)]
-    pub fn component_id(&self) -> &u8 {
-        compid(&self.buffer)
+    pub fn component_id(&self) -> u8 {
+        *compid(&self.buffer)
     }
 
     #[inline(always)]
     pub fn message_id(&self) -> u32 {
         msgid(&self.buffer)
+    }
+
+    #[inline(always)]
+    pub(crate) fn frame_header_bytes(&self) -> Bytes {
+        const LEN_SIZE: usize = 1;
+        let header_start = V2Packet::STX_SIZE + LEN_SIZE;
+        let header_end = header_start + V2Packet::HEADER_SIZE;
+
+        self.buffer.slice(header_start..header_end)
+    }
+
+    #[inline(always)]
+    pub(crate) fn payload_bytes(&self) -> Bytes {
+        let payload_start = V2Packet::STX_SIZE + V2Packet::HEADER_SIZE;
+        let payload_size = *len(&self.buffer) as usize;
+        let payload_end = payload_start + payload_size;
+
+        self.buffer.slice(payload_start..payload_end)
     }
 }
 
@@ -357,19 +375,19 @@ mod test {
         let v2_packet = V2Packet::from(raw_v2_message);
 
         assert_eq!(v2_packet.header(), raw_v2_message.header());
-        assert_eq!(*v2_packet.stx(), raw_v2_message.raw_bytes()[0]);
-        assert_eq!(*v2_packet.payload_length(), raw_v2_message.payload_length());
+        assert_eq!(v2_packet.stx(), raw_v2_message.raw_bytes()[0]);
+        assert_eq!(v2_packet.payload_length(), raw_v2_message.payload_length());
         assert_eq!(
-            *v2_packet.incompatibility_flags(),
+            v2_packet.incompatibility_flags(),
             raw_v2_message.incompatibility_flags()
         );
         assert_eq!(
-            *v2_packet.compatibility_flags(),
+            v2_packet.compatibility_flags(),
             raw_v2_message.compatibility_flags()
         );
-        assert_eq!(*v2_packet.sequence(), raw_v2_message.sequence());
-        assert_eq!(*v2_packet.system_id(), raw_v2_message.system_id());
-        assert_eq!(*v2_packet.component_id(), raw_v2_message.component_id());
+        assert_eq!(v2_packet.sequence(), raw_v2_message.sequence());
+        assert_eq!(v2_packet.system_id(), raw_v2_message.system_id());
+        assert_eq!(v2_packet.component_id(), raw_v2_message.component_id());
         assert_eq!(v2_packet.message_id(), raw_v2_message.message_id());
         assert_eq!(v2_packet.payload(), raw_v2_message.payload());
         assert_eq!(v2_packet.checksum(), raw_v2_message.checksum());

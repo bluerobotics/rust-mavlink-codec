@@ -1,5 +1,7 @@
 pub mod codec;
 pub mod error;
+pub mod mav_types;
+pub mod parser;
 pub mod rust_mavlink_compatibility;
 pub mod v1;
 pub mod v2;
@@ -14,6 +16,13 @@ use v2::{V2Packet, V2_STX};
 pub enum Packet {
     V1(V1Packet) = V1_STX,
     V2(V2Packet) = V2_STX,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+pub enum PacketVersion {
+    V1 = V1_STX,
+    V2 = V2_STX,
 }
 
 impl Packet {
@@ -74,7 +83,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn stx(&self) -> &u8 {
+    pub fn stx(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.stx(),
             Packet::V2(v2_packet) => v2_packet.stx(),
@@ -82,7 +91,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn payload_length(&self) -> &u8 {
+    pub fn payload_length(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.payload_length(),
             Packet::V2(v2_packet) => v2_packet.payload_length(),
@@ -90,7 +99,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn sequence(&self) -> &u8 {
+    pub fn sequence(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.sequence(),
             Packet::V2(v2_packet) => v2_packet.sequence(),
@@ -98,7 +107,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn system_id(&self) -> &u8 {
+    pub fn system_id(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.system_id(),
             Packet::V2(v2_packet) => v2_packet.system_id(),
@@ -106,7 +115,7 @@ impl Packet {
     }
 
     #[inline(always)]
-    pub fn component_id(&self) -> &u8 {
+    pub fn component_id(&self) -> u8 {
         match self {
             Packet::V1(v1_packet) => v1_packet.component_id(),
             Packet::V2(v2_packet) => v2_packet.component_id(),
@@ -116,10 +125,32 @@ impl Packet {
     #[inline(always)]
     pub fn message_id(&self) -> u32 {
         match self {
-            Packet::V1(v1_packet) => *v1_packet.message_id() as u32,
+            Packet::V1(v1_packet) => v1_packet.message_id() as u32,
             Packet::V2(v2_packet) => v2_packet.message_id(),
         }
     }
+
+    fn header_bytes(&self) -> Bytes {
+        match self {
+            Packet::V1(v1_packet) => v1_packet.frame_header_bytes(),
+            Packet::V2(v2_packet) => v2_packet.frame_header_bytes(),
+        }
+    }
+
+    fn payload_bytes(&self) -> Bytes {
+        match self {
+            Packet::V1(v1_packet) => v1_packet.payload_bytes(),
+            Packet::V2(v2_packet) => v2_packet.payload_bytes(),
+        }
+    }
+
+    // // TODO: Maybe change this to from_frame!
+    // pub fn try_from_frame(frame: MavFrame, version: PacketVersion) -> Result<Self, DecoderError> {
+    //     match version {
+    //         PacketVersion::V1 => V1Packet::try_from(frame).map(Self::V1),
+    //         PacketVersion::V2 => V2Packet::try_from(frame).map(Self::V2),
+    //     }
+    // }
 }
 
 /// Creates a `MavlinkCodec` with compile-time configuration.
