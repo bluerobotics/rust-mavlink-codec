@@ -21,7 +21,7 @@ fn add_random_v2_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
 
     loop {
         let message_id = rng.gen_range(0..2 ^ 24);
-        if let Ok(data) = MavMessage::default_message_from_id(message_id) {
+        if let Some(data) = MavMessage::default_message_from_id(message_id) {
             if mavlink::write_v2_msg(buf, header, &data).is_ok() {
                 break;
             }
