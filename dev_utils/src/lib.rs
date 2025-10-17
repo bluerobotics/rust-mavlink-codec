@@ -20,7 +20,7 @@ pub fn create_random_v1_raw_message(rng: &mut StdRng) -> MAVLinkV1MessageRaw {
 
     loop {
         let message_id = rng.gen_range(0..2 ^ 24);
-        if let Ok(message_data) = MavMessage::default_message_from_id(message_id) {
+        if let Some(message_data) = MavMessage::default_message_from_id(message_id) {
             let mut raw_v1_message = MAVLinkV1MessageRaw::new();
 
             raw_v1_message.serialize_message(header, &message_data);
@@ -47,7 +47,7 @@ pub fn create_random_v2_raw_message(rng: &mut StdRng) -> MAVLinkV2MessageRaw {
 
     loop {
         let message_id = rng.gen_range(0..2 ^ 24);
-        if let Ok(message_data) = MavMessage::default_message_from_id(message_id) {
+        if let Some(message_data) = MavMessage::default_message_from_id(message_id) {
             let mut raw_v2_message = MAVLinkV2MessageRaw::new();
 
             raw_v2_message.serialize_message(header, &message_data);
