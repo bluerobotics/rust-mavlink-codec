@@ -62,18 +62,26 @@ fn benchmark_decode(c: &mut Criterion) {
             |b, &messages_count| {
                 let buf = buf.clone();
 
-                b.to_async(&rt).iter(|| async {
-                    let mut reader = mavlink::peek_reader::PeekReader::new(&buf[..]);
+                b.to_async(&rt).iter_batched(
+                    || {
+                        let reader = mavlink::peek_reader::PeekReader::new(&buf[..]);
 
+                        reader
+                    },
+                    |mut reader| async move {
                     for _ in 0..messages_count {
-                        let _msg = black_box(
-                            mavlink::read_v2_raw_message::<mavlink::ardupilotmega::MavMessage, _>(
-                                &mut reader,
-                            )
+                            let _msg =
+                                black_box(
+                                    mavlink::read_v2_raw_message::<
+                                        mavlink::ardupilotmega::MavMessage,
+                                        _,
+                                    >(&mut reader)
                             .unwrap(),
                         );
                     }
-                })
+                    },
+                    criterion::BatchSize::SmallInput,
+                )
             },
         );
 
@@ -83,9 +91,13 @@ fn benchmark_decode(c: &mut Criterion) {
             |b, &messages_count| {
                 let buf = buf.clone();
 
-                b.to_async(&rt).iter(|| async {
-                    let mut reader = mavlink::async_peek_reader::AsyncPeekReader::new(&buf[..]);
+                b.to_async(&rt).iter_batched(
+                    || {
+                        let reader = mavlink::async_peek_reader::AsyncPeekReader::new(&buf[..]);
 
+                        reader
+                    },
+                    |mut reader| async move {
                     for _ in 0..messages_count {
                         let _msg = black_box(
                             mavlink::read_v2_raw_message_async::<
@@ -96,7 +108,9 @@ fn benchmark_decode(c: &mut Criterion) {
                             .unwrap(),
                         );
                     }
-                })
+                    },
+                    criterion::BatchSize::SmallInput,
+                )
             },
         );
 
@@ -106,15 +120,21 @@ fn benchmark_decode(c: &mut Criterion) {
             |b, &messages_count| {
                 let buf = buf.clone(); // Reset buffer each time
 
-                b.to_async(&rt).iter(|| async {
-                    let mut buf = bytes::BytesMut::from(buf.as_slice());
-                    let mut codec =
+                b.to_async(&rt).iter_batched(
+                    || {
+                        let buf = bytes::BytesMut::from(buf.as_slice());
+                        let codec =
                         MavlinkCodec::<true, true, false, false, false, false>::default();
 
+                        (buf, codec)
+                    },
+                    |(mut buf, mut codec)| async move {
                     for _ in 0..messages_count {
                         let _msg = black_box(codec.decode(&mut buf).unwrap().unwrap());
                     }
-                })
+                    },
+                    criterion::BatchSize::SmallInput,
+                )
             },
         );
 
@@ -122,16 +142,21 @@ fn benchmark_decode(c: &mut Criterion) {
             BenchmarkId::new("decoder-framed.next", messages_count),
             messages_count,
             |b, &messages_count| {
-                let buf = buf.clone();
+                b.to_async(&rt).iter_batched(
+                    || {
+                        let codec =
+                            MavlinkCodec::<true, true, false, false, false, false>::default();
+                        let framed = FramedRead::new(buf.as_slice(), codec);
 
-                b.to_async(&rt).iter(|| async {
-                    let codec = MavlinkCodec::<true, true, false, false, false, false>::default();
-                    let mut framed = FramedRead::new(buf.as_slice(), codec);
-
+                        framed
+                    },
+                    |mut framed| async move {
                     for _ in 0..messages_count {
                         let _msg = black_box(framed.next().await.unwrap().unwrap());
                     }
-                })
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
             },
         );
     }
