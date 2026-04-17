@@ -71,12 +71,6 @@ impl<
                     trace!("Waitig for STX...");
 
                     if buf.is_empty() {
-                        if ACCEPT_V2 {
-                            // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-                        } else {
-                            // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-                        }
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -98,8 +92,6 @@ impl<
                 // V1 Codec
                 CodecState::WaitingV1PacketHeader if ACCEPT_V1 => {
                     if buf.len() < V1Packet::HEADER_SIZE {
-                        // buf.reserve(V1Packet::HEADER_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -113,8 +105,6 @@ impl<
                 }
                 CodecState::ValidatingV1Packet { packet_size } if ACCEPT_V1 => {
                     if buf.len() < packet_size {
-                        // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -197,7 +187,6 @@ impl<
                         buf_packet
                     } else {
                         let buf_packet = buf.split_to(packet_size);
-                        // buf.reserve(V1Packet::MAX_PACKET_SIZE);
 
                         buf_packet
                     };
@@ -212,8 +201,6 @@ impl<
                 // V2 Codec
                 CodecState::WaitingV2PacketHeader if ACCEPT_V2 => {
                     if buf.len() < V2Packet::HEADER_SIZE {
-                        // buf.reserve(V2Packet::HEADER_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -237,8 +224,6 @@ impl<
                 }
                 CodecState::ValidatingV2Packet { packet_size } if ACCEPT_V2 => {
                     if buf.len() < packet_size {
-                        // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -321,7 +306,6 @@ impl<
                         buf_packet
                     } else {
                         let buf_packet = buf.split_to(packet_size);
-                        // buf.reserve(V2Packet::MAX_PACKET_SIZE);
 
                         buf_packet
                     };
