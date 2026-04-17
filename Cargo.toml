@@ -29,7 +29,7 @@ std = []
 
 [dev-dependencies]
 anyhow = "1.0"
-criterion = { version =  "0.5", features = ["async_tokio"] }
+criterion = { version =  "0.8", features = ["async_tokio"] }
 dev-utils = { path = "dev_utils" }
 futures = "0.3"
 mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "tokio-1"] }
