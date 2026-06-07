@@ -139,11 +139,11 @@ pub(crate) fn payload<T: AsRef<[u8]>>(buf: &T) -> &[u8] {
 
 #[inline(always)]
 pub(crate) fn checksum<T: AsRef<[u8]>>(buf: &T) -> u16 {
-    let checksum_end = packet_size(buf);
-    let checksum_start = checksum_end - V2Packet::CHECKSUM_SIZE;
+    let payload_size = *len(buf) as usize;
+    let checksum_start = V2Packet::STX_SIZE + V2Packet::HEADER_SIZE + payload_size;
 
     let buf = buf.as_ref();
-    u16::from_le_bytes([buf[checksum_start], buf[checksum_end - 1]])
+    u16::from_le_bytes([buf[checksum_start], buf[checksum_start + 1]])
 }
 
 #[inline(always)]

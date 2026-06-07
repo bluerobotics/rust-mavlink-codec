@@ -48,7 +48,7 @@ async fn chuncked_decode_v1() {
         writer.shutdown().await.unwrap();
     });
 
-    let codec = MavlinkCodec::<true, false, false, false, false, false>::default();
+    let codec = MavlinkCodec::<true, false, false, false, false, false, false>::default();
     let mut framed = FramedRead::new(reader, codec);
 
     let mut i = 0;
@@ -125,7 +125,7 @@ async fn chuncked_decode_v2() {
         writer.shutdown().await.unwrap();
     });
 
-    let codec = MavlinkCodec::<false, true, false, false, false, false>::default();
+    let codec = MavlinkCodec::<false, true, false, false, false, false, false>::default();
     let mut framed = FramedRead::new(reader, codec);
 
     let mut i = 0;
