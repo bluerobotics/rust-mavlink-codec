@@ -209,7 +209,7 @@ impl<
                     if DROP_INCOMPATIBLE {
                         let incompat_flags = *v2::incompat_flags(buf);
                         if incompat_flags & !MAVLINK_SUPPORTED_IFLAGS > 0 {
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
+                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
                             self.state = CodecState::WaitingForStx;
 
                             return Ok(Some(Err(DecoderError::Incompatible { incompat_flags })));
