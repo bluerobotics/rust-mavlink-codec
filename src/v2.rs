@@ -175,9 +175,11 @@ pub(crate) fn packet_size<T: AsRef<[u8]>>(buf: &T) -> usize {
     let header = V2Packet::HEADER_SIZE;
     let payload = *len(buf) as usize;
     let checksum = V2Packet::CHECKSUM_SIZE;
-    let signature = has_signature(buf)
-        .then_some(V2Packet::SIGNATURE_SIZE)
-        .unwrap_or_default();
+    let signature = if has_signature(buf) {
+        V2Packet::SIGNATURE_SIZE
+    } else {
+        Default::default()
+    };
 
     stx + header + payload + checksum + signature
 }
