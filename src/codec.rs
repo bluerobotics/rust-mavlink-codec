@@ -108,6 +108,9 @@ pub enum CodecState {
     CopyV2Packet {
         packet_size: usize,
     },
+    Discarding {
+        remaining: usize,
+    },
 }
 
 impl<
@@ -189,8 +192,9 @@ impl<
                         if sysid == 0 {
                             trace!("Invalid SystemID: {sysid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidSystemID { sysid })));
                         }
@@ -202,8 +206,9 @@ impl<
                         if compid == 0 {
                             trace!("Invalid SystemID: {compid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidComponentID { compid })));
                         }
@@ -215,8 +220,9 @@ impl<
                         let Some(extra_crc) = get_extra_crc(msgid) else {
                             trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::UnknownMessageID { msgid })));
                         };
@@ -229,8 +235,9 @@ impl<
                                 "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
                             );
 
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidCRC {
                                 expected_crc,
@@ -243,8 +250,9 @@ impl<
 
                     // Signature Verification
                     if VERIFY_SIGNATURE {
-                        buf.advance(V1Packet::STX_SIZE);
-                        self.state = CodecState::WaitingForStx;
+                        self.state = CodecState::Discarding {
+                            remaining: packet_size,
+                        };
 
                         return Ok(Some(Err(DecoderError::InvalidSignature)));
                     } else {
@@ -273,17 +281,19 @@ impl<
                         return Ok(None);
                     }
 
+                    let packet_size = v2::packet_size(buf);
+
                     if DROP_INCOMPATIBLE {
                         let incompat_flags = *v2::incompat_flags(buf);
                         if incompat_flags & !MAVLINK_SUPPORTED_IFLAGS > 0 {
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::Incompatible { incompat_flags })));
                         }
                     }
 
-                    let packet_size = v2::packet_size(buf);
                     self.state = CodecState::ValidatingV2Packet { packet_size };
                 }
                 CodecState::ValidatingV2Packet { packet_size } if ACCEPT_V2 => {
@@ -302,8 +312,9 @@ impl<
                         if sysid == 0 {
                             trace!("Invalid SystemID: {sysid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidSystemID { sysid })));
                         }
@@ -315,8 +326,9 @@ impl<
                         if compid == 0 {
                             trace!("Invalid SystemID: {compid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidComponentID { compid })));
                         }
@@ -328,8 +340,9 @@ impl<
                         let Some(extra_crc) = get_extra_crc(msgid) else {
                             trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::UnknownMessageID { msgid })));
                         };
@@ -342,8 +355,9 @@ impl<
                                 "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
                             );
 
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidCRC {
                                 expected_crc,
@@ -365,8 +379,9 @@ impl<
                                 .unwrap_or(false)
                         });
                         if !signature_ok {
-                            buf.advance(V2Packet::STX_SIZE);
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidSignature)));
                         }
@@ -385,6 +400,19 @@ impl<
 
                     self.state = CodecState::WaitingForStx;
                     return Ok(Some(Ok(Packet::V2(packet))));
+                }
+                CodecState::Discarding { remaining } => {
+                    let to_discard = remaining.min(buf.len());
+                    buf.advance(to_discard);
+
+                    let left = remaining - to_discard;
+                    if left > 0 {
+                        trace!("Discarding rejected frame, {left} bytes still pending");
+                        self.state = CodecState::Discarding { remaining: left };
+                        return Ok(None);
+                    }
+
+                    self.state = CodecState::WaitingForStx;
                 }
                 _ => {
                     unreachable!()
