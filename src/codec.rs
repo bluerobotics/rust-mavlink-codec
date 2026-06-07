@@ -176,21 +176,7 @@ impl<
                     self.state = CodecState::CopyV1Packet { packet_size };
                 }
                 CodecState::CopyV1Packet { packet_size } if ACCEPT_V1 => {
-                    let buf_packet = if SKIP_CRC_VALIDATION {
-                        // Copy the entire packet consuming the source buffer
-                        let mut buf_packet = BytesMut::with_capacity(packet_size);
-                        buf_packet[..packet_size].copy_from_slice(&buf[..packet_size]);
-
-                        // Since it is a non validated packet, there might be other packets within this buffer, so we can only discard this STX
-                        buf.advance(V1Packet::STX_SIZE);
-
-                        buf_packet
-                    } else {
-                        let buf_packet = buf.split_to(packet_size);
-
-                        buf_packet
-                    };
-
+                    let buf_packet = buf.split_to(packet_size);
                     let packet = V1Packet {
                         buffer: buf_packet.freeze(),
                     };
@@ -295,20 +281,7 @@ impl<
                     self.state = CodecState::CopyV2Packet { packet_size };
                 }
                 CodecState::CopyV2Packet { packet_size } if ACCEPT_V2 => {
-                    let buf_packet = if SKIP_CRC_VALIDATION {
-                        // Copy the entire packet consuming the source buffer
-                        let mut buf_packet = BytesMut::with_capacity(packet_size);
-                        buf_packet[..packet_size].copy_from_slice(&buf[..packet_size]);
-
-                        // Since it is a non validated packet, there might be other packets within this buffer, so we can only discard this STX
-                        buf.advance(V2Packet::STX_SIZE);
-
-                        buf_packet
-                    } else {
-                        let buf_packet = buf.split_to(packet_size);
-
-                        buf_packet
-                    };
+                    let buf_packet = buf.split_to(packet_size);
 
                     let packet = V2Packet {
                         buffer: buf_packet.freeze(),
