@@ -10,6 +10,17 @@ use crate::{
     Packet,
 };
 
+/// MAVLink packet codec whose behavior is selected at compile time through
+/// const-generic toggles.
+///
+/// The toggles are, in order:
+///
+/// * `ACCEPT_V1` -- accept MAVLink v1 frames.
+/// * `ACCEPT_V2` -- accept MAVLink v2 frames.
+/// * `DROP_INVALID_SYSID` -- reject frames whose system id equals zero.
+/// * `DROP_INVALID_COMPID` -- reject frames whose component id equals zero.
+/// * `SKIP_CRC_VALIDATION` -- skip **only** the CRC computation step.
+/// * `DROP_INCOMPATIBLE` -- reject v2 frames with unsupported incompat flags.
 #[derive(Debug, Default)]
 pub struct MavlinkCodec<
     const ACCEPT_V1: bool,
