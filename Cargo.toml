@@ -10,11 +10,12 @@ name = "mavlink_codec"
 path = "src/lib.rs"
 bench = false
 
-# [profile.release]
-# codegen-units = 1
-# lto = "fat"
-# panic = "abort"
-# opt-level = 3
+[profile.release]
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+opt-level = 3
+debug = 1
 
 [dependencies]
 bytes = "1.11"
