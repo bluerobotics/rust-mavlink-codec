@@ -69,16 +69,16 @@ fn benchmark_decode(c: &mut Criterion) {
                         reader
                     },
                     |mut reader| async move {
-                    for _ in 0..messages_count {
+                        for _ in 0..messages_count {
                             let _msg =
                                 black_box(
                                     mavlink::read_v2_raw_message::<
                                         mavlink::ardupilotmega::MavMessage,
                                         _,
                                     >(&mut reader)
-                            .unwrap(),
-                        );
-                    }
+                                    .unwrap(),
+                                );
+                        }
                     },
                     criterion::BatchSize::SmallInput,
                 )
@@ -98,16 +98,16 @@ fn benchmark_decode(c: &mut Criterion) {
                         reader
                     },
                     |mut reader| async move {
-                    for _ in 0..messages_count {
-                        let _msg = black_box(
-                            mavlink::read_v2_raw_message_async::<
-                                mavlink::ardupilotmega::MavMessage,
-                                _,
-                            >(&mut reader)
-                            .await
-                            .unwrap(),
-                        );
-                    }
+                        for _ in 0..messages_count {
+                            let _msg = black_box(
+                                mavlink::read_v2_raw_message_async::<
+                                    mavlink::ardupilotmega::MavMessage,
+                                    _,
+                                >(&mut reader)
+                                .await
+                                .unwrap(),
+                            );
+                        }
                     },
                     criterion::BatchSize::SmallInput,
                 )
@@ -124,14 +124,14 @@ fn benchmark_decode(c: &mut Criterion) {
                     || {
                         let buf = bytes::BytesMut::from(buf.as_slice());
                         let codec =
-                        MavlinkCodec::<true, true, false, false, false, false>::default();
+                            MavlinkCodec::<true, true, false, false, false, false>::default();
 
                         (buf, codec)
                     },
                     |(mut buf, mut codec)| async move {
-                    for _ in 0..messages_count {
-                        let _msg = black_box(codec.decode(&mut buf).unwrap().unwrap());
-                    }
+                        for _ in 0..messages_count {
+                            let _msg = black_box(codec.decode(&mut buf).unwrap().unwrap());
+                        }
                     },
                     criterion::BatchSize::SmallInput,
                 )
@@ -151,9 +151,9 @@ fn benchmark_decode(c: &mut Criterion) {
                         framed
                     },
                     |mut framed| async move {
-                    for _ in 0..messages_count {
-                        let _msg = black_box(framed.next().await.unwrap().unwrap());
-                    }
+                        for _ in 0..messages_count {
+                            let _msg = black_box(framed.next().await.unwrap().unwrap());
+                        }
                     },
                     criterion::BatchSize::SmallInput,
                 );
