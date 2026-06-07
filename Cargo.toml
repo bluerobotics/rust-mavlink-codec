@@ -20,7 +20,7 @@ debug = 1
 [dependencies]
 bytes = "1.11"
 log = "0.4"
-mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega"] }
+mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "signing"] }
 thiserror = "2.0"
 tokio-util = { version = "0.7", features = ["codec"] }
 
@@ -34,7 +34,7 @@ criterion = { version =  "0.8", features = ["async_tokio"] }
 dev-utils = { path = "dev_utils" }
 dhat = "0.3"
 futures = "0.3"
-mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "tokio-1"] }
+mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "tokio-1", "signing"] }
 rand = "0.8"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"

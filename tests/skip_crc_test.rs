@@ -6,10 +6,10 @@ use tokio_util::codec::Decoder;
 
 const SEED: u64 = 42;
 
-type SkipV1Codec = MavlinkCodec<true, false, false, false, true, false>;
-type SkipV2Codec = MavlinkCodec<false, true, false, false, true, false>;
-type StrictV1Codec = MavlinkCodec<true, false, false, false, false, false>;
-type StrictV2Codec = MavlinkCodec<false, true, false, false, false, false>;
+type SkipV1Codec = MavlinkCodec<true, false, false, false, true, false, false>;
+type SkipV2Codec = MavlinkCodec<false, true, false, false, true, false, false>;
+type StrictV1Codec = MavlinkCodec<true, false, false, false, false, false, false>;
+type StrictV2Codec = MavlinkCodec<false, true, false, false, false, false, false>;
 
 fn corrupt_crc(buf: &mut [u8]) {
     let len = buf.len();

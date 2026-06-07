@@ -124,7 +124,8 @@ fn benchmark_decode(c: &mut Criterion) {
                     || {
                         let buf = bytes::BytesMut::from(buf.as_slice());
                         let codec =
-                            MavlinkCodec::<true, true, false, false, false, false>::default();
+                            MavlinkCodec::<true, true, false, false, false, false, false>::default(
+                            );
 
                         (buf, codec)
                     },
@@ -145,7 +146,8 @@ fn benchmark_decode(c: &mut Criterion) {
                 b.to_async(&rt).iter_batched(
                     || {
                         let codec =
-                            MavlinkCodec::<true, true, false, false, false, false>::default();
+                            MavlinkCodec::<true, true, false, false, false, false, false>::default(
+                            );
                         let framed = FramedRead::new(buf.as_slice(), codec);
 
                         framed

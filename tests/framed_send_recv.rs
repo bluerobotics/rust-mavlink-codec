@@ -20,7 +20,7 @@ async fn send_recv_v1() {
         packets.push(packet);
     }
 
-    let codec = MavlinkCodec::<true, false, false, false, false, false>::default();
+    let codec = MavlinkCodec::<true, false, false, false, false, false, false>::default();
     let simplex = tokio::io::SimplexStream::new_unsplit(4096);
     let framed = Framed::new(simplex, codec);
     let (mut writer, mut reader) = futures::StreamExt::split(framed);
@@ -57,7 +57,7 @@ async fn send_recv_v1_concurrent() {
         packets.push(packet);
     }
 
-    let codec = MavlinkCodec::<true, false, false, false, false, false>::default();
+    let codec = MavlinkCodec::<true, false, false, false, false, false, false>::default();
     let simplex = tokio::io::SimplexStream::new_unsplit(4096);
     let framed = Framed::new(simplex, codec);
     let (mut writer, mut reader) = futures::StreamExt::split(framed);
@@ -100,7 +100,7 @@ async fn send_recv_v2() {
         packets.push(packet);
     }
 
-    let codec = MavlinkCodec::<false, true, false, false, false, false>::default();
+    let codec = MavlinkCodec::<false, true, false, false, false, false, false>::default();
     let simplex = tokio::io::SimplexStream::new_unsplit(4096);
     let framed = Framed::new(simplex, codec);
     let (mut writer, mut reader) = futures::StreamExt::split(framed);
@@ -137,7 +137,7 @@ async fn send_recv_v2_concurrent() {
         packets.push(packet);
     }
 
-    let codec = MavlinkCodec::<false, true, false, false, false, false>::default();
+    let codec = MavlinkCodec::<false, true, false, false, false, false, false>::default();
     let simplex = tokio::io::SimplexStream::new_unsplit(4096);
     let framed = Framed::new(simplex, codec);
     let (mut writer, mut reader) = futures::StreamExt::split(framed);

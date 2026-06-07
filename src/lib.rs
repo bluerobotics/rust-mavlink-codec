@@ -132,6 +132,7 @@ impl Packet {
 /// - `drop_invalid_compid`: Whether to drop messages with zeroed Component ID
 /// - `skip_crc_validation`: Whether to skip the CRC validation
 /// - `drop_incompatible`: Whether to drop messages with unknown Incompatibility Flags
+/// - `verify_signature`: Whether to require a valid MAVLink2 signature
 ///
 /// # Example
 ///
@@ -145,10 +146,11 @@ impl Packet {
 ///     drop_invalid_compid: false,
 ///     skip_crc_validation: false,
 ///     drop_incompatible: false,
+///     verify_signature: false,
 /// };
 ///
 /// // Which is equivallent to:
-/// let codec = MavlinkCodec::<true, true, false, false, false, false>::default();
+/// let codec = MavlinkCodec::<true, true, false, false, false, false, false>::default();
 /// ```
 #[macro_export]
 macro_rules! mavlink_codec {
@@ -165,6 +167,8 @@ macro_rules! mavlink_codec {
         skip_crc_validation: $skip_crc_validation:expr,
         /// Whether to drop messages with unknown Incompatibility Flags
         drop_incompatible: $drop_incompatible:expr,
+        /// Whether to require a valid MAVLink2 signature
+        verify_signature: $verify_signature:expr,
     ) => {
         $crate::codec::MavlinkCodec::<
             { $accept_v1 },
@@ -173,8 +177,7 @@ macro_rules! mavlink_codec {
             { $drop_invalid_compid },
             { $skip_crc_validation },
             { $drop_incompatible },
-        > {
-            state: $crate::codec::CodecState::default(),
-        }
+            { $verify_signature },
+        >::default()
     };
 }

@@ -46,8 +46,8 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 const SEED: u64 = 42;
 
-type Codec = MavlinkCodec<true, true, false, false, false, false>;
-type SkipCrcCodec = MavlinkCodec<true, true, false, false, true, false>;
+type Codec = MavlinkCodec<true, true, false, false, false, false, false>;
+type SkipCrcCodec = MavlinkCodec<true, true, false, false, true, false, false>;
 
 /// Mirror of `mavlink-server`'s `Protocol` wrapper with the same allocation
 /// shape: a `String` origin plus the decoded `Packet`, reached by consumers

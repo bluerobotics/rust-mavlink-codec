@@ -22,6 +22,9 @@ pub enum DecoderError {
         calculated_crc: u16,
     },
 
+    #[error("invalid signature")]
+    InvalidSignature,
+
     #[error("io error")]
     Io(#[from] io::Error),
 
