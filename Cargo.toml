@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "dev_utils", "xtask"]
+resolver = "2"
+
 [package]
 name = "mavlink-codec"
 authors = ["João Antônio Cardoso <joao.maker@gmail.com>"]
