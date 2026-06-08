@@ -21,6 +21,7 @@ debug = 1
 bytes = "1.11"
 log = "0.4"
 mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "signing"] }
+sha2 = "0.11"
 thiserror = "2.0"
 tokio-util = { version = "0.7", features = ["codec"] }
 
