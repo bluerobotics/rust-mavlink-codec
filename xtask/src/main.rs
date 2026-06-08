@@ -17,11 +17,18 @@ struct Args {
 enum XtaskCommand {
     /// Run library unit tests under Miri.
     Miri,
+    /// Run the test suite with cargo-nextest.
+    Test {
+        /// Extra arguments forwarded to `cargo nextest run`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 fn main() -> Result<()> {
     match Args::parse().command {
         XtaskCommand::Miri => miri(),
+        XtaskCommand::Test { args } => test(&args),
     }
 }
 
@@ -32,6 +39,22 @@ fn miri() -> Result<()> {
             .status()
             .context("failed to spawn `cargo miri`")?,
     )
+}
+
+fn test(args: &[String]) -> Result<()> {
+    let mut cmd = cargo();
+    cmd.args(["nextest", "run", "--locked"]);
+    cmd.args(args);
+    ensure_success(
+        cmd.status()
+            .context("failed to spawn `cargo nextest run`")?,
+    )
+}
+
+fn cargo() -> Command {
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(project_root());
+    cmd
 }
 
 fn cargo_nightly() -> Command {

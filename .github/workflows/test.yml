@@ -40,11 +40,14 @@ jobs:
     - name: Building lib for ${{ matrix.os }} ${{ matrix.target }}
       run: cargo build --release --locked --target ${{matrix.target}} --verbose
 
-    - name: Building tests for ${{ matrix.os }} ${{ matrix.target }}
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@nextest
+
+    - name: Compile all targets for ${{ matrix.os }} ${{ matrix.target }}
       run: cargo test --all-targets --no-run --locked --target ${{matrix.target}} --verbose
 
     - name: Running tests for ${{ matrix.os }} ${{ matrix.target }}
-      run: cargo test --all-targets --locked --target ${{matrix.target}} --verbose
+      run: cargo xtask test -- --target ${{matrix.target}} --verbose
 
   miri:
     runs-on: ubuntu-latest
