@@ -1,4 +1,4 @@
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use log::trace;
 use mavlink::calculate_crc;
 use tokio_util::codec::{Decoder, Encoder};
@@ -370,14 +370,18 @@ impl<
 
                     // Signature Verification
                     if VERIFY_SIGNATURE {
-                        let v2_packet = V2Packet {
-                            buffer: Bytes::copy_from_slice(&buf[..packet_size]),
-                        };
-                        let signature_ok = self.signing.as_ref().is_some_and(|signing| {
-                            mavlink::MAVLinkV2MessageRaw::try_from(v2_packet)
-                                .map(|raw| signing.verify_signature(&raw))
-                                .unwrap_or(false)
-                        });
+                        // Verify with a single copy into the fixed-size raw message. True
+                        // zero-copy is blocked upstream: rust-mavlink's `verify_signature`
+                        // requires a `&MAVLinkV2MessageRaw` and its secret key is private, so
+                        // we cannot validate over the borrowed buffer without reimplementing
+                        // its stateful replay logic.
+                        let raw = crate::rust_mavlink_compatibility::raw_v2_from_slice(
+                            &buf[..packet_size],
+                        );
+                        let signature_ok = self
+                            .signing
+                            .as_ref()
+                            .is_some_and(|signing| signing.verify_signature(&raw));
                         if !signature_ok {
                             self.state = CodecState::Discarding {
                                 remaining: packet_size,
