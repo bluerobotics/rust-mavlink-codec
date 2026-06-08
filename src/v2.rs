@@ -22,7 +22,12 @@ impl V2Packet {
     pub const HEADER_SIZE: usize = 9;
     pub const MAX_PAYLOAD_SIZE: usize = 255;
     pub const CHECKSUM_SIZE: usize = std::mem::size_of::<u16>();
-    pub const SIGNATURE_SIZE: usize = 13;
+    pub const SIGNATURE_LINK_ID_SIZE: usize = 1;
+    pub const SIGNATURE_TIMESTAMP_SIZE: usize = 6;
+    pub const SIGNATURE_VALUE_SIZE: usize = 6;
+    pub const SIGNATURE_SIZE: usize = V2Packet::SIGNATURE_LINK_ID_SIZE
+        + V2Packet::SIGNATURE_TIMESTAMP_SIZE
+        + V2Packet::SIGNATURE_VALUE_SIZE;
     pub const MAX_PACKET_SIZE: usize = V2Packet::STX_SIZE
         + V2Packet::HEADER_SIZE
         + V2Packet::MAX_PAYLOAD_SIZE
@@ -62,6 +67,26 @@ impl V2Packet {
     #[inline(always)]
     pub fn signature(&self) -> Option<&[u8]> {
         signature(&self.buffer)
+    }
+
+    #[inline(always)]
+    pub fn signature_link_id(&self) -> Option<u8> {
+        signature_link_id(&self.buffer)
+    }
+
+    #[inline(always)]
+    pub fn signature_timestamp(&self) -> Option<&[u8]> {
+        signature_timestamp(&self.buffer)
+    }
+
+    #[inline(always)]
+    pub fn signature_timestamp_u64(&self) -> Option<u64> {
+        signature_timestamp_u64(&self.buffer)
+    }
+
+    #[inline(always)]
+    pub fn signature_value(&self) -> Option<&[u8]> {
+        signature_value(&self.buffer)
     }
 
     #[inline(always)]
@@ -170,6 +195,38 @@ pub(crate) fn signature<T: AsRef<[u8]>>(buf: &T) -> Option<&[u8]> {
 }
 
 #[inline(always)]
+pub(crate) fn signature_link_id<T: AsRef<[u8]>>(buf: &T) -> Option<u8> {
+    let link_id_start = 0;
+
+    signature(buf).map(|signature| signature[link_id_start])
+}
+
+#[inline(always)]
+pub(crate) fn signature_timestamp<T: AsRef<[u8]>>(buf: &T) -> Option<&[u8]> {
+    let timestamp_start = V2Packet::SIGNATURE_LINK_ID_SIZE;
+    let timestamp_end = timestamp_start + V2Packet::SIGNATURE_TIMESTAMP_SIZE;
+
+    signature(buf).map(|signature| &signature[timestamp_start..timestamp_end])
+}
+
+#[inline(always)]
+pub(crate) fn signature_timestamp_u64<T: AsRef<[u8]>>(buf: &T) -> Option<u64> {
+    signature_timestamp(buf).map(|timestamp| {
+        let mut timestamp_bytes = [0u8; std::mem::size_of::<u64>()];
+        timestamp_bytes[..timestamp.len()].copy_from_slice(timestamp);
+        u64::from_le_bytes(timestamp_bytes)
+    })
+}
+
+#[inline(always)]
+pub(crate) fn signature_value<T: AsRef<[u8]>>(buf: &T) -> Option<&[u8]> {
+    let value_start = V2Packet::SIGNATURE_LINK_ID_SIZE + V2Packet::SIGNATURE_TIMESTAMP_SIZE;
+    let value_end = value_start + V2Packet::SIGNATURE_VALUE_SIZE;
+
+    signature(buf).map(|signature| &signature[value_start..value_end])
+}
+
+#[inline(always)]
 pub(crate) fn packet_size<T: AsRef<[u8]>>(buf: &T) -> usize {
     let stx = V2Packet::STX_SIZE;
     let header = V2Packet::HEADER_SIZE;
@@ -258,6 +315,28 @@ mod test {
         188, 195, // crc
     ];
 
+    const HEARTBEAT_SIGNED: &[u8] = &[
+        253, // stx
+        // start of header
+        9, // payload len
+        1, // incompat flags (signed)
+        0, // compat flags
+        0, // seq
+        1, // sys ID
+        1, // comp ID
+        0, 0, 0, // msg ID
+        // end of header
+        // start of payload
+        10, 11, 12, 13, 14, 15, 16, 17, 18, //
+        // end of payload
+        0xDE, 0xAD, // crc
+        // start of signature
+        0x2A, // link id
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, // timestamp
+        0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, // value
+              // end of signature
+    ];
+
     #[test]
     fn test_stx() {
         assert_eq!(*stx(&COMMAND_LONG), V2_STX);
@@ -324,6 +403,62 @@ mod test {
     #[test]
     fn test_has_signature_false() {
         assert!(!has_signature(&COMMAND_LONG));
+    }
+
+    #[test]
+    fn test_has_signature_true() {
+        assert!(has_signature(&HEARTBEAT_SIGNED));
+    }
+
+    #[test]
+    fn test_signature_some() {
+        assert_eq!(
+            signature(&HEARTBEAT_SIGNED),
+            Some(&HEARTBEAT_SIGNED[(1 + 9 + 9 + 2)..(1 + 9 + 9 + 2 + 13)])
+        );
+    }
+
+    #[test]
+    fn test_signature_link_id() {
+        assert_eq!(signature_link_id(&HEARTBEAT_SIGNED), Some(0x2A));
+    }
+
+    #[test]
+    fn test_signature_timestamp() {
+        assert_eq!(
+            signature_timestamp(&HEARTBEAT_SIGNED),
+            Some(&HEARTBEAT_SIGNED[(1 + 9 + 9 + 2 + 1)..(1 + 9 + 9 + 2 + 1 + 6)])
+        );
+    }
+
+    #[test]
+    fn test_signature_timestamp_u64() {
+        assert_eq!(
+            signature_timestamp_u64(&HEARTBEAT_SIGNED),
+            Some(u64::from_le_bytes([
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0, 0
+            ]))
+        );
+    }
+
+    #[test]
+    fn test_signature_value() {
+        assert_eq!(
+            signature_value(&HEARTBEAT_SIGNED),
+            Some(&HEARTBEAT_SIGNED[(1 + 9 + 9 + 2 + 1 + 6)..(1 + 9 + 9 + 2 + 13)])
+        );
+    }
+
+    #[test]
+    fn test_signature_fields_none_when_unsigned() {
+        assert!(signature_link_id(&COMMAND_LONG).is_none());
+        assert!(signature_timestamp(&COMMAND_LONG).is_none());
+        assert!(signature_value(&COMMAND_LONG).is_none());
+    }
+
+    #[test]
+    fn test_packet_size_with_signature() {
+        assert_eq!(packet_size(&HEARTBEAT_SIGNED), (1 + 9) + 9 + 2 + 13);
     }
 
     #[test]
