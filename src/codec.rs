@@ -108,6 +108,18 @@ pub enum CodecState {
     CopyV2Packet {
         packet_size: usize,
     },
+    /// Resync state entered when a frame is rejected (bad CRC, policy drop, bad signature,
+    /// unsupported incompat flags).
+    ///
+    /// The whole declared frame is discarded (`remaining = packet_size`) rather than
+    /// rescanning for the next STX from the byte after the marker. This is a deliberate
+    /// security default: refusing to resync inside a rejected frame closes packet-in-packet
+    /// injection, where a forged outer frame hides a valid inner frame in its payload (see
+    /// the `packet_in_packet` and `desync_liveness` exploit suites, and rust-mavlink PR #508).
+    ///
+    /// The trade-off is liveness: a corrupt declared `len` can over-skip and drop a real
+    /// subsequent frame. A forward-rescan toggle (`RESYNC_FROM_NEXT_STX`) was considered and
+    /// rejected as a default because it reopens that injection vector; see `SECURITY.md`.
     Discarding {
         remaining: usize,
     },
