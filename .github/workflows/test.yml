@@ -45,3 +45,24 @@ jobs:
 
     - name: Running tests for ${{ matrix.os }} ${{ matrix.target }}
       run: cargo test --all-targets --locked --target ${{matrix.target}} --verbose
+
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use cached dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: "miri-${{ hashFiles('**/Cargo.lock') }}"
+          shared-key: "shared"
+
+      - name: Install Miri
+        run: |
+          rustup toolchain install nightly --profile minimal
+          rustup component add miri --toolchain nightly
+          cargo +nightly miri setup
+
+      - name: Miri
+        run: cargo xtask miri
