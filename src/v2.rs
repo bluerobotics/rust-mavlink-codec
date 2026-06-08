@@ -186,7 +186,7 @@ pub(crate) fn packet_size<T: AsRef<[u8]>>(buf: &T) -> usize {
 
 #[inline(always)]
 pub(crate) fn has_signature<T: AsRef<[u8]>>(buf: &T) -> bool {
-    incompat_flags(buf) & (IncompatibilityFlags::Signed as u8) == 1
+    incompat_flags(buf) & (IncompatibilityFlags::Signed as u8) != 0
 }
 
 #[inline(always)]
