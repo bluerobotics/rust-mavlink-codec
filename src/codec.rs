@@ -37,7 +37,7 @@ pub struct MavlinkCodec<
     const ACCEPT_UNKNOWN_MSGID: bool = false,
 > {
     pub state: CodecState,
-    signing: Option<mavlink::SigningData>,
+    signing: Option<crate::signing::SigningData>,
 }
 
 impl<
@@ -90,7 +90,7 @@ impl<
         ACCEPT_UNKNOWN_MSGID,
     >
 {
-    pub fn with_signing(signing: mavlink::SigningData) -> Self {
+    pub fn with_signing(signing: crate::signing::SigningData) -> Self {
         Self {
             state: CodecState::default(),
             signing: Some(signing),
@@ -418,18 +418,11 @@ impl<
 
                     // Signature Verification
                     if VERIFY_SIGNATURE {
-                        // Verify with a single copy into the fixed-size raw message. True
-                        // zero-copy is blocked upstream: rust-mavlink's `verify_signature`
-                        // requires a `&MAVLinkV2MessageRaw` and its secret key is private, so
-                        // we cannot validate over the borrowed buffer without reimplementing
-                        // its stateful replay logic.
-                        let raw = crate::rust_mavlink_compatibility::raw_v2_from_slice(
-                            &buf[..packet_size],
-                        );
+                        // Verify in place over the buffered frame bytes (zero-copy).
                         let signature_ok = self
                             .signing
-                            .as_ref()
-                            .is_some_and(|signing| signing.verify_signature(&raw));
+                            .as_mut()
+                            .is_some_and(|signing| signing.verify_signature(&buf[..packet_size]));
                         if !signature_ok {
                             self.state = CodecState::Discarding {
                                 remaining: packet_size,
