@@ -10,6 +10,11 @@ use rand::{prelude::StdRng, SeedableRng};
 use tokio_stream::StreamExt;
 use tokio_util::codec::{Decoder, FramedRead};
 
+#[cfg(feature = "bench-c-reference")]
+extern "C" {
+    fn mavlink_codec_bench_count_messages(data: *const u8, len: usize) -> std::os::raw::c_int;
+}
+
 fn add_random_v2_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
     use rand::Rng;
 
@@ -159,6 +164,19 @@ fn benchmark_decode(c: &mut Criterion) {
                     },
                     criterion::BatchSize::SmallInput,
                 );
+            },
+        );
+
+        #[cfg(feature = "bench-c-reference")]
+        group.bench_with_input(
+            BenchmarkId::new("c_library_v2", messages_count),
+            messages_count,
+            |b, &_messages_count| {
+                b.iter(|| {
+                    let count =
+                        unsafe { mavlink_codec_bench_count_messages(buf.as_ptr(), buf.len()) };
+                    black_box(count);
+                });
             },
         );
     }

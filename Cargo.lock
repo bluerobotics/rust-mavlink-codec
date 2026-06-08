@@ -605,6 +605,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "cc",
  "criterion",
  "dev-utils",
  "dhat",
