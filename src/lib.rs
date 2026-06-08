@@ -133,6 +133,8 @@ impl Packet {
 /// - `skip_crc_validation`: Whether to skip the CRC validation
 /// - `drop_incompatible`: Whether to drop messages with unknown Incompatibility Flags
 /// - `verify_signature`: Whether to require a valid MAVLink2 signature
+/// - `accept_unknown_msgid`: Whether to forward (unvalidated) frames whose message id is
+///   absent from the compiled dialect, instead of dropping them (router use case)
 ///
 /// # Example
 ///
@@ -147,10 +149,11 @@ impl Packet {
 ///     skip_crc_validation: false,
 ///     drop_incompatible: false,
 ///     verify_signature: false,
+///     accept_unknown_msgid: false,
 /// };
 ///
 /// // Which is equivallent to:
-/// let codec = MavlinkCodec::<true, true, false, false, false, false, false>::default();
+/// let codec = MavlinkCodec::<true, true, false, false, false, false, false, false>::default();
 /// ```
 #[macro_export]
 macro_rules! mavlink_codec {
@@ -169,6 +172,8 @@ macro_rules! mavlink_codec {
         drop_incompatible: $drop_incompatible:expr,
         /// Whether to require a valid MAVLink2 signature
         verify_signature: $verify_signature:expr,
+        /// Whether to forward frames with a message id absent from the compiled dialect
+        accept_unknown_msgid: $accept_unknown_msgid:expr,
     ) => {
         $crate::codec::MavlinkCodec::<
             { $accept_v1 },
@@ -178,6 +183,7 @@ macro_rules! mavlink_codec {
             { $skip_crc_validation },
             { $drop_incompatible },
             { $verify_signature },
+            { $accept_unknown_msgid },
         >::default()
     };
 }
