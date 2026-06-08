@@ -1,6 +1,7 @@
 pub mod codec;
 pub mod error;
 pub mod rust_mavlink_compatibility;
+pub mod signing;
 pub mod v1;
 pub mod v2;
 

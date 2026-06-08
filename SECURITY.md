@@ -60,8 +60,9 @@ rejected (v1 cannot be signed). A message authentication code is the only mechan
 the residual packet-in-packet cases where the forged outer declares a tiny length
 (see `tests/exploits/packet_in_packet/len1.rs`).
 
-Verification currently performs a single copy of the frame into rust-mavlink's fixed-size
-`MAVLinkV2MessageRaw`. Fully zero-copy verification is blocked upstream: rust-mavlink's
-`verify_signature` requires a `&MAVLinkV2MessageRaw` and keeps its secret key and replay state
-private, so the codec cannot validate over the borrowed buffer without reimplementing that
-security-critical logic.
+Verification is zero-copy: the SHA-256 signature is computed in place over the buffered frame
+bytes (`src/signing.rs`), without materializing rust-mavlink's fixed-size `MAVLinkV2MessageRaw`.
+Because the codec verifies through `Decoder::decode(&mut self)`, the per-stream timestamp replay
+state is mutated through exclusive `&mut` access and needs no locking. The cost of this is that
+the codec carries its own copy of the signing/replay logic, which must track the MAVLink signing
+specification.
