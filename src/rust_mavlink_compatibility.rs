@@ -91,21 +91,29 @@ impl TryFrom<V2Packet> for mavlink::MAVLinkV2MessageRaw {
 
     /// A convenient rust-mavlink compatibility layer
     fn try_from(value: V2Packet) -> Result<Self, Self::Error> {
-        let src_s = value.as_slice();
-        let src_s_ptr = src_s.as_ptr();
-        let src_s_len = src_s.len();
+        Ok(raw_v2_from_slice(value.as_slice()))
+    }
+}
 
-        let mut message = std::mem::MaybeUninit::<mavlink::MAVLinkV2MessageRaw>::uninit();
-        let dst_s_ptr = message.as_mut_ptr() as *mut u8;
+/// Builds a raw v2 message from a frame slice with a single copy, avoiding the intermediate
+/// `Bytes` allocation the `V2Packet` path would incur.
+///
+/// A free function rather than `TryFrom<&[u8]>` because the orphan rule forbids implementing a
+/// foreign trait for a foreign type over a non-local slice argument.
+pub(crate) fn raw_v2_from_slice(src_s: &[u8]) -> mavlink::MAVLinkV2MessageRaw {
+    let src_s_ptr = src_s.as_ptr();
+    let src_s_len = src_s.len();
 
-        unsafe {
-            let remaining_len = 280 - src_s_len;
-            if remaining_len > 0 {
-                std::ptr::write_bytes(dst_s_ptr.add(src_s_len), 0, remaining_len);
-            }
+    let mut message = std::mem::MaybeUninit::<mavlink::MAVLinkV2MessageRaw>::uninit();
+    let dst_s_ptr = message.as_mut_ptr() as *mut u8;
 
-            std::ptr::copy_nonoverlapping(src_s_ptr, dst_s_ptr, src_s_len);
-            Ok(message.assume_init())
+    unsafe {
+        let remaining_len = 280 - src_s_len;
+        if remaining_len > 0 {
+            std::ptr::write_bytes(dst_s_ptr.add(src_s_len), 0, remaining_len);
         }
+
+        std::ptr::copy_nonoverlapping(src_s_ptr, dst_s_ptr, src_s_len);
+        message.assume_init()
     }
 }
