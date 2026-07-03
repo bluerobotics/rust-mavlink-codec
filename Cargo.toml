@@ -45,8 +45,8 @@ criterion = { version =  "0.8", features = ["async_tokio"] }
 dev-utils = { path = "dev_utils" }
 dhat = "0.3"
 futures = "0.3"
-mavlink = { version = "0.18.0", default-features = false, features = ["std", "dialect-ardupilotmega", "mav2-message-signing"] }
-rand = "0.8"
+mavlink = { version = "0.18.0", default-features = false, features = ["std", "dialect-ardupilotmega", "mav2-message-signing", "arbitrary"] }
+rand = "0.9"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 tokio-util = "0.7"
