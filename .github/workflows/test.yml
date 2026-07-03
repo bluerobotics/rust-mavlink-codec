@@ -36,6 +36,10 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile minimal --target ${{ matrix.TARGET }} -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+      - name: Install build dependencies - musl
+        if: matrix.TARGET == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
       - name: Building lib for ${{ matrix.os }} ${{ matrix.target }}
         run: cargo build --release --locked --target ${{matrix.target}} --verbose
 
