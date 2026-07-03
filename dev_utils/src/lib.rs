@@ -52,7 +52,7 @@ fn random_header(rng: &mut StdRng) -> mavlink::MavHeader {
 pub fn add_random_v1_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
     let raw_v1_message = create_random_v1_raw_message(rng);
 
-    buf.write(raw_v1_message.raw_bytes()).unwrap();
+    buf.write_all(raw_v1_message.raw_bytes()).unwrap();
 }
 
 pub fn create_random_v1_raw_message(rng: &mut StdRng) -> MAVLinkV1MessageRaw {
@@ -79,7 +79,7 @@ pub fn create_random_v1_raw_message(rng: &mut StdRng) -> MAVLinkV1MessageRaw {
 pub fn add_random_v2_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
     let raw_v2_message = create_random_v2_raw_message(rng);
 
-    buf.write(raw_v2_message.raw_bytes()).unwrap();
+    buf.write_all(raw_v2_message.raw_bytes()).unwrap();
 }
 
 pub fn create_random_v2_raw_message(rng: &mut StdRng) -> MAVLinkV2MessageRaw {
