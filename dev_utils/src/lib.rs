@@ -13,13 +13,13 @@ pub fn create_random_v1_raw_message(rng: &mut StdRng) -> MAVLinkV1MessageRaw {
     use mavlink::{dialects::ardupilotmega::*, Message};
 
     let header = mavlink::MavHeader {
-        system_id: rng.gen_range(1..255),
-        component_id: rng.gen_range(1..255),
-        sequence: rng.gen_range(0..255),
+        system_id: rng.random_range(1..255),
+        component_id: rng.random_range(1..255),
+        sequence: rng.random_range(0..255),
     };
 
     loop {
-        let message_id = rng.gen_range(0..2 ^ 24);
+        let message_id = rng.random_range(0..2 ^ 24);
         if let Some(message_data) = MavMessage::default_message_from_id(message_id) {
             let mut raw_v1_message = MAVLinkV1MessageRaw::new();
 
@@ -40,13 +40,13 @@ pub fn create_random_v2_raw_message(rng: &mut StdRng) -> MAVLinkV2MessageRaw {
     use mavlink::{dialects::ardupilotmega::*, Message};
 
     let header = mavlink::MavHeader {
-        system_id: rng.gen_range(1..255),
-        component_id: rng.gen_range(1..255),
-        sequence: rng.gen_range(0..255),
+        system_id: rng.random_range(1..255),
+        component_id: rng.random_range(1..255),
+        sequence: rng.random_range(0..255),
     };
 
     loop {
-        let message_id = rng.gen_range(0..2 ^ 24);
+        let message_id = rng.random_range(0..2 ^ 24);
         if let Some(message_data) = MavMessage::default_message_from_id(message_id) {
             let mut raw_v2_message = MAVLinkV2MessageRaw::new();
 
@@ -63,7 +63,7 @@ pub fn chunk_buffer_randomly(buf: &[u8], rng: &mut StdRng, min: usize, max: usiz
     let mut start = 0;
 
     while remaining > 0 {
-        let chunk_size = rng.gen_range(min..=max).min(remaining);
+        let chunk_size = rng.random_range(min..=max).min(remaining);
         let end = start + chunk_size;
         chunks.push(buf[start..end].to_vec());
         start = end;
