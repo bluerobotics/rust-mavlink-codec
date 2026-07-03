@@ -31,7 +31,7 @@ async fn chuncked_decode_v1() {
     // False-marker recovery is exercised by the exploit suite, not here.
     for _ in 0..100 {
         let trash: u8 = loop {
-            let b: u8 = rng.gen();
+            let b: u8 = rng.random();
             if b != 0xFD && b != 0xFE {
                 break b;
             }
@@ -117,7 +117,7 @@ async fn chuncked_decode_v2() {
     // False-marker recovery is exercised by the exploit suite, not here.
     for _ in 0..100 {
         let trash: u8 = loop {
-            let b: u8 = rng.gen();
+            let b: u8 = rng.random();
             if b != 0xFD && b != 0xFE {
                 break b;
             }

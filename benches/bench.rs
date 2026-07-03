@@ -73,13 +73,13 @@ fn add_random_v2_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
     use mavlink::dialects::ardupilotmega::*;
 
     let header = mavlink::MavHeader {
-        system_id: rng.gen_range(1..255),
-        component_id: rng.gen_range(1..255),
-        sequence: rng.gen_range(0..255),
+        system_id: rng.random_range(1..255),
+        component_id: rng.random_range(1..255),
+        sequence: rng.random_range(0..255),
     };
 
     loop {
-        let message_id = rng.gen_range(0..2 ^ 24);
+        let message_id = rng.random_range(0..2 ^ 24);
         if let Some(data) = MavMessage::default_message_from_id(message_id) {
             if mavlink::write_v2_msg(buf, header, &data).is_ok() {
                 break;
@@ -98,13 +98,13 @@ fn add_random_signed_v2_message(
     use mavlink::dialects::ardupilotmega::*;
 
     let header = mavlink::MavHeader {
-        system_id: rng.gen_range(1..255),
-        component_id: rng.gen_range(1..255),
-        sequence: rng.gen_range(0..255),
+        system_id: rng.random_range(1..255),
+        component_id: rng.random_range(1..255),
+        sequence: rng.random_range(0..255),
     };
 
     loop {
-        let message_id = rng.gen_range(0..2 ^ 24);
+        let message_id = rng.random_range(0..2 ^ 24);
         if let Some(data) = MavMessage::default_message_from_id(message_id) {
             let mut raw = mavlink::MAVLinkV2MessageRaw::new();
             raw.serialize_message_for_signing(header, &data);
