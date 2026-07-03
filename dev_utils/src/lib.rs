@@ -1,7 +1,53 @@
-use std::io::Write;
+use std::{io::Write, sync::OnceLock};
 
 use mavlink::{MAVLinkV1MessageRaw, MAVLinkV2MessageRaw};
 use rand::{prelude::StdRng, Rng};
+
+pub fn all_message_ids() -> &'static [(&'static str, u32)] {
+    static IDS: OnceLock<Vec<(&'static str, u32)>> = OnceLock::new();
+
+    IDS.get_or_init(|| {
+        use mavlink::{dialects::ardupilotmega::MavMessage, Message};
+
+        MavMessage::all_ids()
+            .iter()
+            .map(|&id| {
+                let msg = MavMessage::default_message_from_id(id)
+                    .unwrap_or_else(|| panic!("dialect lists id {id} but has no default message"));
+                (msg.message_name(), id)
+            })
+            .collect()
+    })
+    .as_slice()
+}
+
+pub fn create_random_v1_message_from_id(rng: &mut StdRng, id: u32) -> Option<MAVLinkV1MessageRaw> {
+    use mavlink::{dialects::ardupilotmega::MavMessage, Message};
+
+    let message_data = MavMessage::random_message_from_id(id, rng)?;
+    let header = random_header(rng);
+    let mut raw = MAVLinkV1MessageRaw::new();
+    raw.serialize_message(header, &message_data);
+    Some(raw)
+}
+
+pub fn create_random_v2_message_from_id(rng: &mut StdRng, id: u32) -> Option<MAVLinkV2MessageRaw> {
+    use mavlink::{dialects::ardupilotmega::MavMessage, Message};
+
+    let message_data = MavMessage::random_message_from_id(id, rng)?;
+    let header = random_header(rng);
+    let mut raw = MAVLinkV2MessageRaw::new();
+    raw.serialize_message(header, &message_data);
+    Some(raw)
+}
+
+fn random_header(rng: &mut StdRng) -> mavlink::MavHeader {
+    mavlink::MavHeader {
+        system_id: rng.random_range(1..255),
+        component_id: rng.random_range(1..255),
+        sequence: rng.random_range(0..255),
+    }
+}
 
 pub fn add_random_v1_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
     let raw_v1_message = create_random_v1_raw_message(rng);
