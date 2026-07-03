@@ -6,5 +6,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mavlink = { version = "0.16.1", features = ["std", "ardupilotmega", "tokio-1"] }
+mavlink = { version = "0.18", features = ["std", "dialect-ardupilotmega", "tokio"] }
 rand = "0.8"
