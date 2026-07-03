@@ -10,7 +10,7 @@ pub fn add_random_v1_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
 }
 
 pub fn create_random_v1_raw_message(rng: &mut StdRng) -> MAVLinkV1MessageRaw {
-    use mavlink::{ardupilotmega::*, Message};
+    use mavlink::{dialects::ardupilotmega::*, Message};
 
     let header = mavlink::MavHeader {
         system_id: rng.gen_range(1..255),
@@ -37,7 +37,7 @@ pub fn add_random_v2_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
 }
 
 pub fn create_random_v2_raw_message(rng: &mut StdRng) -> MAVLinkV2MessageRaw {
-    use mavlink::{ardupilotmega::*, Message};
+    use mavlink::{dialects::ardupilotmega::*, Message};
 
     let header = mavlink::MavHeader {
         system_id: rng.gen_range(1..255),

@@ -141,7 +141,7 @@ fn benchmark_mavlink_compatibility_v2(c: &mut Criterion) {
 fn try_from_first_implementation_v1(
     value: V1Packet,
 ) -> Result<mavlink::MAVLinkV1MessageRaw, mavlink::error::MessageReadError> {
-    use mavlink::ardupilotmega::MavMessage;
+    use mavlink::dialects::ardupilotmega::MavMessage;
 
     let mut reader = mavlink::peek_reader::PeekReader::new(value.as_slice());
     let message = mavlink::read_v1_raw_message::<MavMessage, _>(&mut reader);
@@ -151,7 +151,7 @@ fn try_from_first_implementation_v1(
 fn try_from_first_implementation_v2(
     value: V2Packet,
 ) -> Result<mavlink::MAVLinkV2MessageRaw, mavlink::error::MessageReadError> {
-    use mavlink::ardupilotmega::MavMessage;
+    use mavlink::dialects::ardupilotmega::MavMessage;
 
     let mut reader = mavlink::peek_reader::PeekReader::new(value.as_slice());
     let message = mavlink::read_v2_raw_message::<MavMessage, _>(&mut reader);

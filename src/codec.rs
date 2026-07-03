@@ -518,7 +518,9 @@ impl<
 pub fn get_extra_crc(msgid: u32) -> Option<u8> {
     use mavlink::Message;
 
-    Some(mavlink::ardupilotmega::MavMessage::extra_crc(msgid))
+    Some(mavlink::dialects::ardupilotmega::MavMessage::extra_crc(
+        msgid,
+    ))
 }
 
 /// Returns whether `msgid` exists in the compiled dialect.
@@ -530,14 +532,15 @@ pub fn get_extra_crc(msgid: u32) -> Option<u8> {
 pub fn is_known_msgid(msgid: u32) -> bool {
     use mavlink::Message;
 
-    mavlink::ardupilotmega::MavMessage::default_message_from_id(msgid).is_some()
+    mavlink::dialects::ardupilotmega::MavMessage::default_message_from_id(msgid).is_some()
 }
 
 #[cfg(test)]
 mod test_encode {
     use super::*;
     use mavlink::{
-        ardupilotmega::MavMessage, MAVLinkV1MessageRaw, MAVLinkV2MessageRaw, MavHeader, Message,
+        dialects::ardupilotmega::MavMessage, MAVLinkV1MessageRaw, MAVLinkV2MessageRaw, MavHeader,
+        Message,
     };
 
     #[test]
@@ -596,7 +599,8 @@ mod test_encode {
 mod test_decode {
     use super::*;
     use mavlink::{
-        ardupilotmega::MavMessage, MAVLinkV1MessageRaw, MAVLinkV2MessageRaw, MavHeader, Message,
+        dialects::ardupilotmega::MavMessage, MAVLinkV1MessageRaw, MAVLinkV2MessageRaw, MavHeader,
+        Message,
     };
 
     #[test]

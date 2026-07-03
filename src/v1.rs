@@ -247,7 +247,9 @@ mod test {
 
     #[test]
     fn test_v1packet_from_raw_v1_message() {
-        use mavlink::{ardupilotmega::MavMessage, MAVLinkV1MessageRaw, MavHeader, Message};
+        use mavlink::{
+            dialects::ardupilotmega::MavMessage, MAVLinkV1MessageRaw, MavHeader, Message,
+        };
 
         let raw_v1_message = {
             let header = MavHeader {
