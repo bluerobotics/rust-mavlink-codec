@@ -1,7 +1,3 @@
-[workspace]
-members = [".", "dev_utils", "xtask"]
-resolver = "2"
-
 [package]
 name = "mavlink-codec"
 authors = ["João Antônio Cardoso <joao.maker@gmail.com>"]
@@ -14,12 +10,11 @@ name = "mavlink_codec"
 path = "src/lib.rs"
 bench = false
 
-[profile.release]
-codegen-units = 1
-lto = "fat"
-panic = "abort"
-opt-level = 3
-debug = 1
+# [profile.release]
+# codegen-units = 1
+# lto = "fat"
+# panic = "abort"
+# opt-level = 3
 
 [dependencies]
 bytes = "1.12"
@@ -32,18 +27,11 @@ tokio-util = { version = "0.7", features = ["codec"] }
 [features]
 default = ["std"]
 std = []
-# Enables the C reference (c_library_v2) decode benchmark arm. Requires the
-# third_party/c_library_v2 git submodule and a C compiler.
-bench-c-reference = []
-
-[build-dependencies]
-cc = "1.2"
 
 [dev-dependencies]
 anyhow = "1.0"
-criterion = { version =  "0.8", features = ["async_tokio"] }
+criterion = { version =  "0.5", features = ["async_tokio"] }
 dev-utils = { path = "dev_utils" }
-dhat = "0.3"
 futures = "0.3"
 mavlink = { version = "0.18.0", default-features = false, features = ["std", "dialect-ardupilotmega", "mav2-message-signing", "arbitrary"] }
 rand = "0.9"
