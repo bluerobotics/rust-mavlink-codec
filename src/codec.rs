@@ -10,7 +10,19 @@ use crate::{
     Packet,
 };
 
-#[derive(Debug, Default)]
+/// MAVLink packet codec whose behavior is selected at compile time through
+/// const-generic toggles.
+///
+/// The toggles are, in order:
+///
+/// * `ACCEPT_V1` -- accept MAVLink v1 frames.
+/// * `ACCEPT_V2` -- accept MAVLink v2 frames.
+/// * `DROP_INVALID_SYSID` -- reject frames whose system id equals zero.
+/// * `DROP_INVALID_COMPID` -- reject frames whose component id equals zero.
+/// * `SKIP_CRC_VALIDATION` -- skip **only** the CRC computation step.
+/// * `DROP_INCOMPATIBLE` -- reject v2 frames with unsupported incompat flags.
+/// * `VERIFY_SIGNATURE` -- require a valid MAVLink2 signature on accepted v2 frames; reject all v1 frames.
+#[derive(Default)]
 pub struct MavlinkCodec<
     const ACCEPT_V1: bool,
     const ACCEPT_V2: bool,
@@ -18,8 +30,64 @@ pub struct MavlinkCodec<
     const DROP_INVALID_COMPID: bool,
     const SKIP_CRC_VALIDATION: bool,
     const DROP_INCOMPATIBLE: bool,
+    const VERIFY_SIGNATURE: bool,
 > {
     pub state: CodecState,
+    signing: Option<mavlink::SigningData>,
+}
+
+impl<
+        const ACCEPT_V1: bool,
+        const ACCEPT_V2: bool,
+        const DROP_INVALID_SYSID: bool,
+        const DROP_INVALID_COMPID: bool,
+        const SKIP_CRC_VALIDATION: bool,
+        const DROP_INCOMPATIBLE: bool,
+        const VERIFY_SIGNATURE: bool,
+    > std::fmt::Debug
+    for MavlinkCodec<
+        ACCEPT_V1,
+        ACCEPT_V2,
+        DROP_INVALID_SYSID,
+        DROP_INVALID_COMPID,
+        SKIP_CRC_VALIDATION,
+        DROP_INCOMPATIBLE,
+        VERIFY_SIGNATURE,
+    >
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MavlinkCodec")
+            .field("state", &self.state)
+            .field("signing", &self.signing.as_ref().map(|_| ".."))
+            .finish()
+    }
+}
+
+impl<
+        const ACCEPT_V1: bool,
+        const ACCEPT_V2: bool,
+        const DROP_INVALID_SYSID: bool,
+        const DROP_INVALID_COMPID: bool,
+        const SKIP_CRC_VALIDATION: bool,
+        const DROP_INCOMPATIBLE: bool,
+        const VERIFY_SIGNATURE: bool,
+    >
+    MavlinkCodec<
+        ACCEPT_V1,
+        ACCEPT_V2,
+        DROP_INVALID_SYSID,
+        DROP_INVALID_COMPID,
+        SKIP_CRC_VALIDATION,
+        DROP_INCOMPATIBLE,
+        VERIFY_SIGNATURE,
+    >
+{
+    pub fn with_signing(signing: mavlink::SigningData) -> Self {
+        Self {
+            state: CodecState::default(),
+            signing: Some(signing),
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -40,6 +108,21 @@ pub enum CodecState {
     CopyV2Packet {
         packet_size: usize,
     },
+    /// Resync state entered when a frame is rejected (bad CRC, policy drop, bad signature,
+    /// unsupported incompat flags).
+    ///
+    /// The whole declared frame is discarded (`remaining = packet_size`) rather than
+    /// rescanning for the next STX from the byte after the marker. This is a deliberate
+    /// security default: refusing to resync inside a rejected frame closes packet-in-packet
+    /// injection, where a forged outer frame hides a valid inner frame in its payload (see
+    /// the `packet_in_packet` and `desync_liveness` exploit suites, and rust-mavlink PR #508).
+    ///
+    /// The trade-off is liveness: a corrupt declared `len` can over-skip and drop a real
+    /// subsequent frame. A forward-rescan toggle (`RESYNC_FROM_NEXT_STX`) was considered and
+    /// rejected as a default because it reopens that injection vector; see `SECURITY.md`.
+    Discarding {
+        remaining: usize,
+    },
 }
 
 impl<
@@ -49,6 +132,7 @@ impl<
         const DROP_INVALID_COMPID: bool,
         const SKIP_CRC_VALIDATION: bool,
         const DROP_INCOMPATIBLE: bool,
+        const VERIFY_SIGNATURE: bool,
     > Decoder
     for MavlinkCodec<
         ACCEPT_V1,
@@ -57,6 +141,7 @@ impl<
         DROP_INVALID_COMPID,
         SKIP_CRC_VALIDATION,
         DROP_INCOMPATIBLE,
+        VERIFY_SIGNATURE,
     >
 {
     type Item = Result<Packet, DecoderError>;
@@ -71,12 +156,6 @@ impl<
                     trace!("Waitig for STX...");
 
                     if buf.is_empty() {
-                        if ACCEPT_V2 {
-                            // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-                        } else {
-                            // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-                        }
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -98,8 +177,6 @@ impl<
                 // V1 Codec
                 CodecState::WaitingV1PacketHeader if ACCEPT_V1 => {
                     if buf.len() < V1Packet::HEADER_SIZE {
-                        // buf.reserve(V1Packet::HEADER_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -113,8 +190,6 @@ impl<
                 }
                 CodecState::ValidatingV1Packet { packet_size } if ACCEPT_V1 => {
                     if buf.len() < packet_size {
-                        // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -129,8 +204,9 @@ impl<
                         if sysid == 0 {
                             trace!("Invalid SystemID: {sysid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidSystemID { sysid })));
                         }
@@ -142,66 +218,63 @@ impl<
                         if compid == 0 {
                             trace!("Invalid SystemID: {compid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidComponentID { compid })));
                         }
                     }
 
                     // CRC Validation
-                    if SKIP_CRC_VALIDATION {
+                    if !SKIP_CRC_VALIDATION {
+                        let msgid = *v1::msgid(buf) as u32;
+                        let Some(extra_crc) = get_extra_crc(msgid) else {
+                            trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
+
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
+
+                            return Ok(Some(Err(DecoderError::UnknownMessageID { msgid })));
+                        };
+                        let checksum_data = v1::checksum_data(buf);
+                        let calculated_crc = calculate_crc(checksum_data, extra_crc);
+
+                        let expected_crc = v1::checksum(buf);
+                        if calculated_crc.ne(&expected_crc) {
+                            trace!(
+                                "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
+                            );
+
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
+
+                            return Ok(Some(Err(DecoderError::InvalidCRC {
+                                expected_crc,
+                                calculated_crc,
+                            })));
+                        }
+                    } else {
                         trace!("CRC Validation skipped.");
-                        self.state = CodecState::CopyV1Packet { packet_size };
-                        continue;
                     }
 
-                    let msgid = *v1::msgid(buf) as u32;
-                    let Some(extra_crc) = get_extra_crc(msgid) else {
-                        trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
+                    // Signature Verification
+                    if VERIFY_SIGNATURE {
+                        self.state = CodecState::Discarding {
+                            remaining: packet_size,
+                        };
 
-                        buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                        self.state = CodecState::WaitingForStx;
-
-                        return Ok(Some(Err(DecoderError::UnknownMessageID { msgid })));
-                    };
-                    let checksum_data = v1::checksum_data(buf);
-                    let calculated_crc = calculate_crc(checksum_data, extra_crc);
-
-                    let expected_crc = v1::checksum(buf);
-                    if calculated_crc.ne(&expected_crc) {
-                        trace!(
-                            "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
-                        );
-
-                        buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                        self.state = CodecState::WaitingForStx;
-
-                        return Ok(Some(Err(DecoderError::InvalidCRC {
-                            expected_crc,
-                            calculated_crc,
-                        })));
+                        return Ok(Some(Err(DecoderError::InvalidSignature)));
+                    } else {
+                        trace!("Signature Verification skipped.");
                     }
 
                     self.state = CodecState::CopyV1Packet { packet_size };
                 }
                 CodecState::CopyV1Packet { packet_size } if ACCEPT_V1 => {
-                    let buf_packet = if SKIP_CRC_VALIDATION {
-                        // Copy the entire packet consuming the source buffer
-                        let mut buf_packet = BytesMut::with_capacity(packet_size);
-                        buf_packet[..packet_size].copy_from_slice(&buf[..packet_size]);
-
-                        // Since it is a non validated packet, there might be other packets within this buffer, so we can only discard this STX
-                        buf.advance(V1Packet::STX_SIZE);
-
-                        buf_packet
-                    } else {
-                        let buf_packet = buf.split_to(packet_size);
-                        // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-
-                        buf_packet
-                    };
-
+                    let buf_packet = buf.split_to(packet_size);
                     let packet = V1Packet {
                         buffer: buf_packet.freeze(),
                     };
@@ -212,8 +285,6 @@ impl<
                 // V2 Codec
                 CodecState::WaitingV2PacketHeader if ACCEPT_V2 => {
                     if buf.len() < V2Packet::HEADER_SIZE {
-                        // buf.reserve(V2Packet::HEADER_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -222,23 +293,23 @@ impl<
                         return Ok(None);
                     }
 
+                    let packet_size = v2::packet_size(buf);
+
                     if DROP_INCOMPATIBLE {
                         let incompat_flags = *v2::incompat_flags(buf);
                         if incompat_flags & !MAVLINK_SUPPORTED_IFLAGS > 0 {
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::Incompatible { incompat_flags })));
                         }
                     }
 
-                    let packet_size = v2::packet_size(buf);
                     self.state = CodecState::ValidatingV2Packet { packet_size };
                 }
                 CodecState::ValidatingV2Packet { packet_size } if ACCEPT_V2 => {
                     if buf.len() < packet_size {
-                        // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -253,8 +324,9 @@ impl<
                         if sysid == 0 {
                             trace!("Invalid SystemID: {sysid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidSystemID { sysid })));
                         }
@@ -266,65 +338,77 @@ impl<
                         if compid == 0 {
                             trace!("Invalid SystemID: {compid:?}. Data: {:?}", &buf[..]);
 
-                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                            self.state = CodecState::WaitingForStx;
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
                             return Ok(Some(Err(DecoderError::InvalidComponentID { compid })));
                         }
                     }
 
                     // CRC Validation
-                    if SKIP_CRC_VALIDATION {
+                    if !SKIP_CRC_VALIDATION {
+                        let msgid = v2::msgid(buf);
+                        let Some(extra_crc) = get_extra_crc(msgid) else {
+                            trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
+
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
+
+                            return Ok(Some(Err(DecoderError::UnknownMessageID { msgid })));
+                        };
+                        let checksum_data = v2::checksum_data(buf);
+                        let calculated_crc = calculate_crc(checksum_data, extra_crc);
+
+                        let expected_crc = v2::checksum(buf);
+                        if calculated_crc.ne(&expected_crc) {
+                            trace!(
+                                "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
+                            );
+
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
+
+                            return Ok(Some(Err(DecoderError::InvalidCRC {
+                                expected_crc,
+                                calculated_crc,
+                            })));
+                        }
+                    } else {
                         trace!("CRC Validation skipped.");
-                        self.state = CodecState::CopyV2Packet { packet_size };
-                        continue;
                     }
 
-                    let msgid = v2::msgid(buf);
-                    let Some(extra_crc) = get_extra_crc(msgid) else {
-                        trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
-
-                        buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                        self.state = CodecState::WaitingForStx;
-
-                        return Ok(Some(Err(DecoderError::UnknownMessageID { msgid })));
-                    };
-                    let checksum_data = v2::checksum_data(buf);
-                    let calculated_crc = calculate_crc(checksum_data, extra_crc);
-
-                    let expected_crc = v2::checksum(buf);
-                    if calculated_crc.ne(&expected_crc) {
-                        trace!(
-                            "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
+                    // Signature Verification
+                    if VERIFY_SIGNATURE {
+                        // Verify with a single copy into the fixed-size raw message. True
+                        // zero-copy is blocked upstream: rust-mavlink's `verify_signature`
+                        // requires a `&MAVLinkV2MessageRaw` and its secret key is private, so
+                        // we cannot validate over the borrowed buffer without reimplementing
+                        // its stateful replay logic.
+                        let raw = crate::rust_mavlink_compatibility::raw_v2_from_slice(
+                            &buf[..packet_size],
                         );
+                        let signature_ok = self
+                            .signing
+                            .as_ref()
+                            .is_some_and(|signing| signing.verify_signature(&raw));
+                        if !signature_ok {
+                            self.state = CodecState::Discarding {
+                                remaining: packet_size,
+                            };
 
-                        buf.advance(V2Packet::STX_SIZE); // Discard this STX
-                        self.state = CodecState::WaitingForStx;
-
-                        return Ok(Some(Err(DecoderError::InvalidCRC {
-                            expected_crc,
-                            calculated_crc,
-                        })));
+                            return Ok(Some(Err(DecoderError::InvalidSignature)));
+                        }
+                    } else {
+                        trace!("Signature Verification skipped.");
                     }
 
                     self.state = CodecState::CopyV2Packet { packet_size };
                 }
                 CodecState::CopyV2Packet { packet_size } if ACCEPT_V2 => {
-                    let buf_packet = if SKIP_CRC_VALIDATION {
-                        // Copy the entire packet consuming the source buffer
-                        let mut buf_packet = BytesMut::with_capacity(packet_size);
-                        buf_packet[..packet_size].copy_from_slice(&buf[..packet_size]);
-
-                        // Since it is a non validated packet, there might be other packets within this buffer, so we can only discard this STX
-                        buf.advance(V2Packet::STX_SIZE);
-
-                        buf_packet
-                    } else {
-                        let buf_packet = buf.split_to(packet_size);
-                        // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-
-                        buf_packet
-                    };
+                    let buf_packet = buf.split_to(packet_size);
 
                     let packet = V2Packet {
                         buffer: buf_packet.freeze(),
@@ -332,6 +416,19 @@ impl<
 
                     self.state = CodecState::WaitingForStx;
                     return Ok(Some(Ok(Packet::V2(packet))));
+                }
+                CodecState::Discarding { remaining } => {
+                    let to_discard = remaining.min(buf.len());
+                    buf.advance(to_discard);
+
+                    let left = remaining - to_discard;
+                    if left > 0 {
+                        trace!("Discarding rejected frame, {left} bytes still pending");
+                        self.state = CodecState::Discarding { remaining: left };
+                        return Ok(None);
+                    }
+
+                    self.state = CodecState::WaitingForStx;
                 }
                 _ => {
                     unreachable!()
@@ -348,6 +445,7 @@ impl<
         const DROP_INVALID_COMPID: bool,
         const SKIP_CRC_VALIDATION: bool,
         const DROP_INCOMPATIBLE: bool,
+        const VERIFY_SIGNATURE: bool,
     > Encoder<Packet>
     for MavlinkCodec<
         ACCEPT_V1,
@@ -356,6 +454,7 @@ impl<
         DROP_INVALID_COMPID,
         SKIP_CRC_VALIDATION,
         DROP_INCOMPATIBLE,
+        VERIFY_SIGNATURE,
     >
 {
     type Error = std::io::Error;
@@ -400,7 +499,7 @@ mod test_encode {
 
     #[test]
     fn test_encode_v1() {
-        let mut codec = MavlinkCodec::<true, true, false, false, false, false>::default();
+        let mut codec = MavlinkCodec::<true, true, false, false, false, false, false>::default();
 
         let v1_packet = {
             let header = MavHeader {
@@ -425,7 +524,7 @@ mod test_encode {
 
     #[test]
     fn test_encode_v2() {
-        let mut codec = MavlinkCodec::<true, true, false, false, false, false>::default();
+        let mut codec = MavlinkCodec::<true, true, false, false, false, false, false>::default();
 
         let v2_packet = {
             let header = MavHeader {
@@ -459,7 +558,7 @@ mod test_decode {
 
     #[test]
     fn test_decode_v1() {
-        let mut codec = MavlinkCodec::<true, false, false, false, false, false>::default();
+        let mut codec = MavlinkCodec::<true, false, false, false, false, false, false>::default();
 
         let mut buf = BytesMut::with_capacity(V1Packet::MAX_PACKET_SIZE);
 
@@ -487,7 +586,7 @@ mod test_decode {
 
     #[test]
     fn test_decode_v2() {
-        let mut codec = MavlinkCodec::<false, true, false, false, false, false>::default();
+        let mut codec = MavlinkCodec::<false, true, false, false, false, false, false>::default();
 
         let mut buf = BytesMut::with_capacity(V1Packet::MAX_PACKET_SIZE);
 

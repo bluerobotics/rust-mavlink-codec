@@ -104,10 +104,19 @@ fn benchmark_decode(c: &mut Criterion) {
             |b, &messages_count| {
                 let buf = buf.clone(); // Reset buffer each time
 
+<<<<<<< HEAD
                 b.to_async(&rt).iter(|| async {
                     let mut buf = bytes::BytesMut::from(buf.as_slice());
                     let mut codec =
                         MavlinkCodec::<true, true, false, false, false, false>::default();
+=======
+                b.to_async(&rt).iter_batched(
+                    || {
+                        let buf = bytes::BytesMut::from(buf.as_slice());
+                        let codec =
+                            MavlinkCodec::<true, true, false, false, false, false, false>::default(
+                            );
+>>>>>>> d7c4204 (src: codec: Add MAVLink2 signature verification)
 
                     for _ in 0..messages_count {
                         let _msg = black_box(codec.decode(&mut buf).unwrap().unwrap());
@@ -120,7 +129,16 @@ fn benchmark_decode(c: &mut Criterion) {
             BenchmarkId::new("decoder-framed.next", messages_count),
             messages_count,
             |b, &messages_count| {
+<<<<<<< HEAD
                 let buf = buf.clone();
+=======
+                b.to_async(&rt).iter_batched(
+                    || {
+                        let codec =
+                            MavlinkCodec::<true, true, false, false, false, false, false>::default(
+                            );
+                        let framed = FramedRead::new(buf.as_slice(), codec);
+>>>>>>> d7c4204 (src: codec: Add MAVLink2 signature verification)
 
                 b.to_async(&rt).iter(|| async {
                     let codec = MavlinkCodec::<true, true, false, false, false, false>::default();

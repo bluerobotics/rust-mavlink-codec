@@ -25,9 +25,18 @@ async fn chuncked_decode_v1() {
     let mut messages = messages.concat();
     println!("Total concatenated message size: {}", messages.len());
 
-    // Add some trash in the beginning
+    // Add some trash in the beginning. Avoid STX markers (0xFD/0xFE) so the leading
+    // noise is skipped byte-by-byte instead of being mistaken for a frame start: on a
+    // bogus length the length-delimited discard would over-skip into the real stream.
+    // False-marker recovery is exercised by the exploit suite, not here.
     for _ in 0..100 {
-        messages.insert(0, rng.gen_range(0..255));
+        let trash: u8 = loop {
+            let b: u8 = rng.gen();
+            if b != 0xFD && b != 0xFE {
+                break b;
+            }
+        };
+        messages.insert(0, trash);
     }
     println!("Added trash to the beginning of the message");
 
@@ -48,7 +57,7 @@ async fn chuncked_decode_v1() {
         writer.shutdown().await.unwrap();
     });
 
-    let codec = MavlinkCodec::<true, false, false, false, false, false>::default();
+    let codec = MavlinkCodec::<true, false, false, false, false, false, false>::default();
     let mut framed = FramedRead::new(reader, codec);
 
     let mut i = 0;
@@ -102,9 +111,18 @@ async fn chuncked_decode_v2() {
     let mut messages = messages.concat();
     println!("Total concatenated message size: {}", messages.len());
 
-    // Add some trash in the beginning
+    // Add some trash in the beginning. Avoid STX markers (0xFD/0xFE) so the leading
+    // noise is skipped byte-by-byte instead of being mistaken for a frame start: on a
+    // bogus length the length-delimited discard would over-skip into the real stream.
+    // False-marker recovery is exercised by the exploit suite, not here.
     for _ in 0..100 {
-        messages.insert(0, rng.gen_range(0..255));
+        let trash: u8 = loop {
+            let b: u8 = rng.gen();
+            if b != 0xFD && b != 0xFE {
+                break b;
+            }
+        };
+        messages.insert(0, trash);
     }
     println!("Added trash to the beginning of the message");
 
@@ -125,7 +143,7 @@ async fn chuncked_decode_v2() {
         writer.shutdown().await.unwrap();
     });
 
-    let codec = MavlinkCodec::<false, true, false, false, false, false>::default();
+    let codec = MavlinkCodec::<false, true, false, false, false, false, false>::default();
     let mut framed = FramedRead::new(reader, codec);
 
     let mut i = 0;
