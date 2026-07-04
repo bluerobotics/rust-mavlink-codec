@@ -17,9 +17,9 @@ bench = false
 # opt-level = 3
 
 [dependencies]
-bytes = "1.10"
+bytes = "1.12"
 log = "0.4"
-mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "signing"] }
+mavlink = { version = "0.18.0", default-features = false, features = ["std", "dialect-ardupilotmega", "mav2-message-signing"] }
 sha2 = "0.11"
 thiserror = "2.0"
 tokio-util = { version = "0.7", features = ["codec"] }
@@ -33,8 +33,8 @@ anyhow = "1.0"
 criterion = { version =  "0.5", features = ["async_tokio"] }
 dev-utils = { path = "dev_utils" }
 futures = "0.3"
-mavlink = { version = "0.16.1", default-features = false, features = ["std", "ardupilotmega", "tokio-1", "signing"] }
-rand = "0.8"
+mavlink = { version = "0.18.0", default-features = false, features = ["std", "dialect-ardupilotmega", "mav2-message-signing", "arbitrary"] }
+rand = "0.9"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 tokio-util = "0.7"

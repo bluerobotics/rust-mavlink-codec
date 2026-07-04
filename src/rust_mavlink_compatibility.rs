@@ -18,7 +18,7 @@ impl TryFrom<Packet> for mavlink::MAVLinkV1MessageRaw {
     type Error = mavlink::error::MessageReadError;
 
     /// A convenient rust-mavlink compatibility layer
-    /// warning: this has a bad performance because we don't have access to the mutable internal buffer of rust-mavlink's raw messages    fn try_from(value: Packet) -> Result<Self, Self::Error> {
+    /// warning: this has a bad performance because we don't have access to the mutable internal buffer of rust-mavlink's raw messages
     fn try_from(value: Packet) -> Result<Self, Self::Error> {
         match value {
             Packet::V1(v1_packet) => mavlink::MAVLinkV1MessageRaw::try_from(v1_packet),
@@ -34,7 +34,7 @@ impl TryFrom<Packet> for mavlink::MAVLinkV2MessageRaw {
     type Error = mavlink::error::MessageReadError;
 
     /// A convenient rust-mavlink compatibility layer
-    /// warning: this has a bad performance because we don't have access to the mutable internal buffer of rust-mavlink's raw messages    fn try_from(value: Packet) -> Result<Self, Self::Error> {
+    /// warning: this has a bad performance because we don't have access to the mutable internal buffer of rust-mavlink's raw messages
     fn try_from(value: Packet) -> Result<Self, Self::Error> {
         match value {
             Packet::V1(_) => Err(mavlink::error::MessageReadError::Io(std::io::Error::new(
