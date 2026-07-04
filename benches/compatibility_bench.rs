@@ -1,6 +1,8 @@
+use std::hint::black_box;
+
 use criterion::{
-    black_box, criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion,
-    PlotConfiguration, Throughput,
+    criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion, PlotConfiguration,
+    Throughput,
 };
 use dev_utils::{create_random_v1_raw_message, create_random_v2_raw_message};
 use mavlink_codec::{v1::V1Packet, v2::V2Packet};
