@@ -22,6 +22,9 @@ use crate::{
 /// * `SKIP_CRC_VALIDATION` -- skip **only** the CRC computation step.
 /// * `DROP_INCOMPATIBLE` -- reject v2 frames with unsupported incompat flags.
 /// * `VERIFY_SIGNATURE` -- require a valid MAVLink2 signature on accepted v2 frames; reject all v1 frames.
+/// * `ACCEPT_UNKNOWN_MSGID` -- forward frames whose message id is absent from the compiled
+///   dialect instead of dropping them (router use case). Such frames cannot be CRC-validated
+///   (their `extra_crc` is unknown), so they are forwarded unvalidated; defaults to `false`.
 #[derive(Default)]
 pub struct MavlinkCodec<
     const ACCEPT_V1: bool,
@@ -31,9 +34,10 @@ pub struct MavlinkCodec<
     const SKIP_CRC_VALIDATION: bool,
     const DROP_INCOMPATIBLE: bool,
     const VERIFY_SIGNATURE: bool,
+    const ACCEPT_UNKNOWN_MSGID: bool = false,
 > {
     pub state: CodecState,
-    signing: Option<mavlink::SigningData>,
+    signing: Option<crate::signing::SigningData>,
 }
 
 impl<
@@ -44,6 +48,7 @@ impl<
         const SKIP_CRC_VALIDATION: bool,
         const DROP_INCOMPATIBLE: bool,
         const VERIFY_SIGNATURE: bool,
+        const ACCEPT_UNKNOWN_MSGID: bool,
     > std::fmt::Debug
     for MavlinkCodec<
         ACCEPT_V1,
@@ -53,6 +58,7 @@ impl<
         SKIP_CRC_VALIDATION,
         DROP_INCOMPATIBLE,
         VERIFY_SIGNATURE,
+        ACCEPT_UNKNOWN_MSGID,
     >
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -71,6 +77,7 @@ impl<
         const SKIP_CRC_VALIDATION: bool,
         const DROP_INCOMPATIBLE: bool,
         const VERIFY_SIGNATURE: bool,
+        const ACCEPT_UNKNOWN_MSGID: bool,
     >
     MavlinkCodec<
         ACCEPT_V1,
@@ -80,9 +87,10 @@ impl<
         SKIP_CRC_VALIDATION,
         DROP_INCOMPATIBLE,
         VERIFY_SIGNATURE,
+        ACCEPT_UNKNOWN_MSGID,
     >
 {
-    pub fn with_signing(signing: mavlink::SigningData) -> Self {
+    pub fn with_signing(signing: crate::signing::SigningData) -> Self {
         Self {
             state: CodecState::default(),
             signing: Some(signing),
@@ -133,6 +141,7 @@ impl<
         const SKIP_CRC_VALIDATION: bool,
         const DROP_INCOMPATIBLE: bool,
         const VERIFY_SIGNATURE: bool,
+        const ACCEPT_UNKNOWN_MSGID: bool,
     > Decoder
     for MavlinkCodec<
         ACCEPT_V1,
@@ -142,6 +151,7 @@ impl<
         SKIP_CRC_VALIDATION,
         DROP_INCOMPATIBLE,
         VERIFY_SIGNATURE,
+        ACCEPT_UNKNOWN_MSGID,
     >
 {
     type Item = Result<Packet, DecoderError>;
@@ -243,6 +253,19 @@ impl<
 
                         let expected_crc = v1::checksum(buf);
                         if calculated_crc.ne(&expected_crc) {
+                            // An unknown message id always fails CRC here because we lack its
+                            // `extra_crc`. In router mode, forward such frames unvalidated
+                            // instead of dropping them; genuinely corrupt known frames are
+                            // still rejected.
+                            if ACCEPT_UNKNOWN_MSGID && !is_known_msgid(msgid) {
+                                trace!(
+                                    "Unknown message ID {msgid:?}; forwarding unvalidated frame."
+                                );
+
+                                self.state = CodecState::CopyV1Packet { packet_size };
+                                continue;
+                            }
+
                             trace!(
                                 "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
                             );
@@ -363,6 +386,19 @@ impl<
 
                         let expected_crc = v2::checksum(buf);
                         if calculated_crc.ne(&expected_crc) {
+                            // An unknown message id always fails CRC here because we lack its
+                            // `extra_crc`. In router mode, forward such frames unvalidated
+                            // instead of dropping them; genuinely corrupt known frames are
+                            // still rejected.
+                            if ACCEPT_UNKNOWN_MSGID && !is_known_msgid(msgid) {
+                                trace!(
+                                    "Unknown message ID {msgid:?}; forwarding unvalidated frame."
+                                );
+
+                                self.state = CodecState::CopyV2Packet { packet_size };
+                                continue;
+                            }
+
                             trace!(
                                 "Invalid CRC: expected: {expected_crc:?}, calculated: {calculated_crc:?}. checksum_data: {checksum_data:?}"
                             );
@@ -382,18 +418,11 @@ impl<
 
                     // Signature Verification
                     if VERIFY_SIGNATURE {
-                        // Verify with a single copy into the fixed-size raw message. True
-                        // zero-copy is blocked upstream: rust-mavlink's `verify_signature`
-                        // requires a `&MAVLinkV2MessageRaw` and its secret key is private, so
-                        // we cannot validate over the borrowed buffer without reimplementing
-                        // its stateful replay logic.
-                        let raw = crate::rust_mavlink_compatibility::raw_v2_from_slice(
-                            &buf[..packet_size],
-                        );
+                        // Verify in place over the buffered frame bytes (zero-copy).
                         let signature_ok = self
                             .signing
-                            .as_ref()
-                            .is_some_and(|signing| signing.verify_signature(&raw));
+                            .as_mut()
+                            .is_some_and(|signing| signing.verify_signature(&buf[..packet_size]));
                         if !signature_ok {
                             self.state = CodecState::Discarding {
                                 remaining: packet_size,
@@ -446,6 +475,7 @@ impl<
         const SKIP_CRC_VALIDATION: bool,
         const DROP_INCOMPATIBLE: bool,
         const VERIFY_SIGNATURE: bool,
+        const ACCEPT_UNKNOWN_MSGID: bool,
     > Encoder<Packet>
     for MavlinkCodec<
         ACCEPT_V1,
@@ -455,6 +485,7 @@ impl<
         SKIP_CRC_VALIDATION,
         DROP_INCOMPATIBLE,
         VERIFY_SIGNATURE,
+        ACCEPT_UNKNOWN_MSGID,
     >
 {
     type Error = std::io::Error;
@@ -488,6 +519,18 @@ pub fn get_extra_crc(msgid: u32) -> Option<u8> {
     use mavlink::Message;
 
     Some(mavlink::ardupilotmega::MavMessage::extra_crc(msgid))
+}
+
+/// Returns whether `msgid` exists in the compiled dialect.
+///
+/// Used on the CRC-failure path to distinguish a frame carrying an unknown message id
+/// (which we cannot CRC-validate, lacking its `extra_crc`) from a genuinely corrupt
+/// known frame. This runs only after a CRC mismatch, so it stays off the hot path.
+#[inline(always)]
+pub fn is_known_msgid(msgid: u32) -> bool {
+    use mavlink::Message;
+
+    mavlink::ardupilotmega::MavMessage::default_message_from_id(msgid).is_some()
 }
 
 #[cfg(test)]
