@@ -10,6 +10,58 @@ use rand::{prelude::StdRng, SeedableRng};
 use tokio_stream::StreamExt;
 use tokio_util::codec::{Decoder, FramedRead};
 
+#[cfg(feature = "bench-c-reference")]
+mod c_reference {
+    use std::{ffi::c_int, mem::MaybeUninit, ptr};
+
+    pub struct BenchState(*mut std::ffi::c_void);
+
+    extern "C" {
+        fn mavlink_codec_bench_state_new() -> *mut std::ffi::c_void;
+        fn mavlink_codec_bench_state_reset(state: *mut std::ffi::c_void);
+        fn mavlink_codec_bench_state_free(state: *mut std::ffi::c_void);
+        fn mavlink_codec_bench_state_decode(
+            state: *mut std::ffi::c_void,
+            data: *const u8,
+            len: usize,
+        ) -> c_int;
+        fn mavlink_codec_bench_state_last_message(
+            state: *const std::ffi::c_void,
+        ) -> *const std::ffi::c_void;
+    }
+
+    impl BenchState {
+        pub fn new() -> Self {
+            let state = unsafe { mavlink_codec_bench_state_new() };
+            assert!(!state.is_null());
+            Self(state)
+        }
+
+        pub fn reset(&mut self) {
+            unsafe { mavlink_codec_bench_state_reset(self.0) };
+        }
+
+        pub fn decode(&mut self, data: &[u8]) -> c_int {
+            unsafe { mavlink_codec_bench_state_decode(self.0, data.as_ptr(), data.len()) }
+        }
+
+        pub fn last_message_word(&self) -> u64 {
+            let msg = unsafe { mavlink_codec_bench_state_last_message(self.0) };
+            let mut word = MaybeUninit::<u64>::uninit();
+            unsafe {
+                ptr::copy_nonoverlapping(msg.cast(), word.as_mut_ptr(), 1);
+                word.assume_init()
+            }
+        }
+    }
+
+    impl Drop for BenchState {
+        fn drop(&mut self) {
+            unsafe { mavlink_codec_bench_state_free(self.0) };
+        }
+    }
+}
+
 fn add_random_v2_message(buf: &mut Vec<u8>, rng: &mut StdRng) {
     use rand::Rng;
 
@@ -154,6 +206,29 @@ fn benchmark_decode(c: &mut Criterion) {
                         for _ in 0..messages_count {
                             let _msg = black_box(framed.next().await.unwrap().unwrap());
                         }
+                    },
+                    criterion::BatchSize::SmallInput,
+                );
+            },
+        );
+
+        #[cfg(feature = "bench-c-reference")]
+        group.bench_with_input(
+            BenchmarkId::new("c_library_v2", messages_count),
+            messages_count,
+            |b, &messages_count| {
+                let buf = buf.clone();
+
+                b.iter_batched(
+                    || {
+                        let mut state = c_reference::BenchState::new();
+                        state.reset();
+                        state
+                    },
+                    |mut state| {
+                        let count = state.decode(&buf);
+                        black_box(count);
+                        black_box(state.last_message_word());
                     },
                     criterion::BatchSize::SmallInput,
                 );
