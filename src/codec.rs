@@ -10,6 +10,17 @@ use crate::{
     Packet,
 };
 
+/// MAVLink packet codec whose behavior is selected at compile time through
+/// const-generic toggles.
+///
+/// The toggles are, in order:
+///
+/// * `ACCEPT_V1` -- accept MAVLink v1 frames.
+/// * `ACCEPT_V2` -- accept MAVLink v2 frames.
+/// * `DROP_INVALID_SYSID` -- reject frames whose system id equals zero.
+/// * `DROP_INVALID_COMPID` -- reject frames whose component id equals zero.
+/// * `SKIP_CRC_VALIDATION` -- skip **only** the CRC computation step.
+/// * `DROP_INCOMPATIBLE` -- reject v2 frames with unsupported incompat flags.
 #[derive(Debug, Default)]
 pub struct MavlinkCodec<
     const ACCEPT_V1: bool,
@@ -71,12 +82,6 @@ impl<
                     trace!("Waitig for STX...");
 
                     if buf.is_empty() {
-                        if ACCEPT_V2 {
-                            // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-                        } else {
-                            // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-                        }
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -98,8 +103,6 @@ impl<
                 // V1 Codec
                 CodecState::WaitingV1PacketHeader if ACCEPT_V1 => {
                     if buf.len() < V1Packet::HEADER_SIZE {
-                        // buf.reserve(V1Packet::HEADER_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -113,8 +116,6 @@ impl<
                 }
                 CodecState::ValidatingV1Packet { packet_size } if ACCEPT_V1 => {
                     if buf.len() < packet_size {
-                        // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -186,22 +187,7 @@ impl<
                     self.state = CodecState::CopyV1Packet { packet_size };
                 }
                 CodecState::CopyV1Packet { packet_size } if ACCEPT_V1 => {
-                    let buf_packet = if SKIP_CRC_VALIDATION {
-                        // Copy the entire packet consuming the source buffer
-                        let mut buf_packet = BytesMut::with_capacity(packet_size);
-                        buf_packet[..packet_size].copy_from_slice(&buf[..packet_size]);
-
-                        // Since it is a non validated packet, there might be other packets within this buffer, so we can only discard this STX
-                        buf.advance(V1Packet::STX_SIZE);
-
-                        buf_packet
-                    } else {
-                        let buf_packet = buf.split_to(packet_size);
-                        // buf.reserve(V1Packet::MAX_PACKET_SIZE);
-
-                        buf_packet
-                    };
-
+                    let buf_packet = buf.split_to(packet_size);
                     let packet = V1Packet {
                         buffer: buf_packet.freeze(),
                     };
@@ -212,8 +198,6 @@ impl<
                 // V2 Codec
                 CodecState::WaitingV2PacketHeader if ACCEPT_V2 => {
                     if buf.len() < V2Packet::HEADER_SIZE {
-                        // buf.reserve(V2Packet::HEADER_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -225,7 +209,7 @@ impl<
                     if DROP_INCOMPATIBLE {
                         let incompat_flags = *v2::incompat_flags(buf);
                         if incompat_flags & !MAVLINK_SUPPORTED_IFLAGS > 0 {
-                            buf.advance(V1Packet::STX_SIZE); // Discard this STX
+                            buf.advance(V2Packet::STX_SIZE); // Discard this STX
                             self.state = CodecState::WaitingForStx;
 
                             return Ok(Some(Err(DecoderError::Incompatible { incompat_flags })));
@@ -237,8 +221,6 @@ impl<
                 }
                 CodecState::ValidatingV2Packet { packet_size } if ACCEPT_V2 => {
                     if buf.len() < packet_size {
-                        // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-
                         trace!(
                             "Not enough data, buf.len: {:?}, buf.capacity: {:?}",
                             buf.len(),
@@ -310,21 +292,7 @@ impl<
                     self.state = CodecState::CopyV2Packet { packet_size };
                 }
                 CodecState::CopyV2Packet { packet_size } if ACCEPT_V2 => {
-                    let buf_packet = if SKIP_CRC_VALIDATION {
-                        // Copy the entire packet consuming the source buffer
-                        let mut buf_packet = BytesMut::with_capacity(packet_size);
-                        buf_packet[..packet_size].copy_from_slice(&buf[..packet_size]);
-
-                        // Since it is a non validated packet, there might be other packets within this buffer, so we can only discard this STX
-                        buf.advance(V2Packet::STX_SIZE);
-
-                        buf_packet
-                    } else {
-                        let buf_packet = buf.split_to(packet_size);
-                        // buf.reserve(V2Packet::MAX_PACKET_SIZE);
-
-                        buf_packet
-                    };
+                    let buf_packet = buf.split_to(packet_size);
 
                     let packet = V2Packet {
                         buffer: buf_packet.freeze(),
