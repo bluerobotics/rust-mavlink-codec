@@ -528,4 +528,49 @@ mod test_decode {
 
         assert_eq!(packet, expected_packet);
     }
+
+    // An id outside the dialect, the crc can't be validated so it's left as is
+    fn unknown_msgid_frame() -> BytesMut {
+        let header = MavHeader {
+            system_id: 1,
+            component_id: 1,
+            sequence: 0,
+        };
+
+        let message_data = MavMessage::default_message_from_id(0).unwrap(); // Heartbeat message
+        let mut raw_v2_message = MAVLinkV2MessageRaw::new();
+        raw_v2_message.serialize_message(header, &message_data);
+
+        let mut buf = BytesMut::from(raw_v2_message.raw_bytes());
+        buf[7..10].copy_from_slice(&[0xFF, 0xFF, 0xFF]);
+        buf
+    }
+
+    #[test]
+    fn test_decode_unknown_msgid_dropped() {
+        let mut codec = MavlinkCodec::<true, true, false, false, false, false>::default();
+
+        let mut buf = unknown_msgid_frame();
+
+        assert!(matches!(
+            codec.decode(&mut buf).unwrap().unwrap(),
+            Err(DecoderError::UnknownMessageID { msgid: 0xFFFFFF })
+        ));
+    }
+
+    #[test]
+    fn test_decode_unknown_msgid_accepted() {
+        let mut codec = MavlinkCodec::<true, true, false, false, false, false> {
+            accept_unknown_msgid: true,
+            ..Default::default()
+        };
+
+        let expected = unknown_msgid_frame();
+        let mut buf = expected.clone();
+
+        let packet = codec.decode(&mut buf).unwrap().unwrap().unwrap();
+
+        assert_eq!(packet.as_slice(), &expected[..]);
+        assert!(buf.is_empty());
+    }
 }
