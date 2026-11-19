@@ -386,9 +386,13 @@ impl<
 
 #[inline(always)]
 pub fn get_extra_crc(msgid: u32) -> Option<u8> {
-    use mavlink::Message;
+    use mavlink::{ardupilotmega::MavMessage, Message};
 
-    Some(mavlink::ardupilotmega::MavMessage::extra_crc(msgid))
+    // extra_crc returns 0 for ids outside the dialect, and 0 can also be a valid crc
+    match MavMessage::extra_crc(msgid) {
+        0 if MavMessage::default_message_from_id(msgid).is_none() => None,
+        extra_crc => Some(extra_crc),
+    }
 }
 
 #[cfg(test)]
