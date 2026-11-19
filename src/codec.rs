@@ -20,6 +20,8 @@ pub struct MavlinkCodec<
     const DROP_INCOMPATIBLE: bool,
 > {
     pub state: CodecState,
+    /// Forward frames with a message id outside the dialect, they can't be CRC validated
+    pub accept_unknown_msgid: bool,
 }
 
 #[derive(Debug, Default)]
@@ -160,6 +162,11 @@ impl<
                     let Some(extra_crc) = get_extra_crc(msgid) else {
                         trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
 
+                        if self.accept_unknown_msgid {
+                            self.state = CodecState::CopyV1Packet { packet_size };
+                            continue;
+                        }
+
                         buf.advance(V1Packet::STX_SIZE); // Discard this STX
                         self.state = CodecState::WaitingForStx;
 
@@ -283,6 +290,11 @@ impl<
                     let msgid = v2::msgid(buf);
                     let Some(extra_crc) = get_extra_crc(msgid) else {
                         trace!("Unknown message ID {msgid:?}. Data: {:?}", &buf[..]);
+
+                        if self.accept_unknown_msgid {
+                            self.state = CodecState::CopyV2Packet { packet_size };
+                            continue;
+                        }
 
                         buf.advance(V2Packet::STX_SIZE); // Discard this STX
                         self.state = CodecState::WaitingForStx;

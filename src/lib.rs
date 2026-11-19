@@ -175,6 +175,7 @@ macro_rules! mavlink_codec {
             { $drop_incompatible },
         > {
             state: $crate::codec::CodecState::default(),
+            accept_unknown_msgid: false,
         }
     };
 }
